@@ -1,39 +1,46 @@
 package main
 
 import (
+	"math"
 	"math/rand"
+)
+
+type Direction uint8
+
+const (
+	Up Direction = iota
+	Down
+	Left
+	Right
 )
 
 // (x, y) coordinates corresponding to dir (direction) 0~3 are: (0, -1), (-1, 0), (0, 1), (1, 0)
 // record of trajectory will be added.
 type Agent struct {
-	energy, health, appearance, dir uint8
-	brain                           Brain
+	energy, health, appearance uint8
+	dir                        Direction
+	brain                      Brain
 }
 
 func (ag *Agent) eat(x int, y int, env *Environment) {
-	if ag.energy > 255-env.cells[x][y].food {
-		ag.energy = 255
-		env.cells[x][y].food = 0 // all food in the cell is eaten; may waste a lot.
-	}
-	ag.energy = ag.energy + env.cells[x][y].food // when food in cell is low (even empty), eating should be punished.
+	ag.energy = (ag.energy + env.cells[x][y].food) % math.MaxUint8 // when food in cell is low (even empty), eating should be punished.
 	env.cells[x][y].food = 0
 	if ag.energy > 192 && ag.health < 240 {
-		ag.health = ag.health + 16 // agent recovers health when its energy is high.
+		ag.health += 16 // agent recovers health when its energy is high.
 	}
 }
 
 // calculate the coordinate of the cell in front of a given cell and direction.
 // the world is wrapped around.
-func locPlusDir(x int, y int, dir uint8) (int, int) {
+func locPlusDir(x int, y int, dir Direction) (int, int) {
 	switch dir {
-	case 0:
+	case Up:
 		return x, (y + envSize - 1) % envSize
-	case 1:
+	case Left:
 		return (x + envSize - 1) % envSize, y
-	case 2:
+	case Down:
 		return x, (y + 1) % envSize
-	case 3:
+	case Right:
 		return (x + 1) % envSize, y
 	default:
 		return x, y
@@ -55,9 +62,9 @@ func (ag *Agent) attack(x int, y int, env *Environment) {
 	// if harm is too big, avoid "under-flow"
 	if harm > env.cells[x2][y2].agent.health {
 		env.cells[x2][y2].agent.health = 0
-		harm = 0
+	} else {
+		env.cells[x2][y2].agent.health -= harm
 	}
-	env.cells[x2][y2].agent.health = env.cells[x2][y2].agent.health - harm
 }
 
 func (ag *Agent) mate(x int, y int, env *Environment) {
@@ -68,7 +75,7 @@ func (ag *Agent) mate(x int, y int, env *Environment) {
 	if currentAgentNum == initAgentNum || ag.energy < costOfMate || env.cells[x2][y2].agent == nil || env.cells[x2][y2].agent.dir != ag.dir {
 		return
 	}
-	ag.energy = ag.energy - costOfMate
+	ag.energy -= costOfMate
 	for {
 		// offspring is created at some random (empty) location, with random direction.
 		x3 := rand.Intn(envSize)
@@ -85,7 +92,7 @@ func (ag *Agent) mate(x int, y int, env *Environment) {
 		env.cells[x3][y3].agent.appearance = currentAgentNum
 		currentAgentNum++
 
-		env.cells[x3][y3].agent.dir = uint8(rand.Intn(4))
+		env.cells[x3][y3].agent.dir = Direction(rand.Intn(4))
 		break
 	}
 }
