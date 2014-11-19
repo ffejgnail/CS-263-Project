@@ -45,7 +45,7 @@ func (env *Environment) setup() {
 		env.cells[x][y].agent.energy = initEnergy
 		env.cells[x][y].agent.health = initHealth
 		env.cells[x][y].agent.appearance = i
-		env.cells[x][y].agent.dir = uint8(rand.Intn(4))
+		env.cells[x][y].agent.dir = Direction(rand.Intn(4))
 	}
 	currentAgentNum = initAgentNum
 
@@ -79,7 +79,7 @@ func (env *Environment) run(iter int) {
 	for i := 0; i < envSize; i++ {
 		for j := 0; j < envSize; j++ {
 			if env.cells[i][j].food < 255-env.cells[i][j].growth {
-				env.cells[i][j].food = env.cells[i][j].food + env.cells[i][j].growth
+				env.cells[i][j].food += env.cells[i][j].growth
 			}
 			if env.cells[i][j].agent == nil || env.cells[i][j].agent.health == 0 { // agent with no health die
 				env.cells[i][j].agent = nil
@@ -95,16 +95,16 @@ func (env *Environment) run(iter int) {
 
 			output := env.cells[i][j].agent.brain.react(input)
 
-			if output&4 == 4 {
+			if output&Eat != 0 {
 				env.cells[i][j].agent.eat(i, j, env)
 			}
-			if output&8 == 8 {
+			if output&Attack != 0 {
 				env.cells[i][j].agent.attack(i, j, env)
 			}
-			if output&16 == 16 {
+			if output&Mate != 0 {
 				env.cells[i][j].agent.mate(i, j, env)
 			}
-			env.cells[i][j].agent.move(output&3, i, j, env)
+			env.cells[i][j].agent.move(output&Move, i, j, env)
 		}
 	}
 }

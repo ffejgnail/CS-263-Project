@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"math/rand"
 )
 
@@ -9,8 +8,8 @@ type Direction uint8
 
 const (
 	Up Direction = iota
-	Down
 	Left
+	Down
 	Right
 )
 
@@ -23,7 +22,11 @@ type Agent struct {
 }
 
 func (ag *Agent) eat(x int, y int, env *Environment) {
-	ag.energy = (ag.energy + env.cells[x][y].food) % math.MaxUint8 // when food in cell is low (even empty), eating should be punished.
+	if ag.energy > 255-env.cells[x][y].food {
+		ag.energy = 255
+	} else {
+		ag.energy += env.cells[x][y].food
+	}
 	env.cells[x][y].food = 0
 	if ag.energy > 192 && ag.health < 240 {
 		ag.health += 16 // agent recovers health when its energy is high.
@@ -98,20 +101,22 @@ func (ag *Agent) mate(x int, y int, env *Environment) {
 }
 
 func (ag *Agent) move(op uint8, x int, y int, env *Environment) {
-	if ag.energy < costOfMove || op != 3 {
-		if op == 1 { // turn left
-			ag.dir = (ag.dir + 1) & 3
+	switch op {
+	case 0: // no op
+	case 1: // turn left
+		ag.dir = (ag.dir + 1) & 3
+	case 2: // turn right
+		ag.dir = (ag.dir + 3) & 3
+	case 3:
+		if ag.energy < costOfMove {
+			return
 		}
-		if op == 2 { // turn right
-			ag.dir = (ag.dir + 3) & 3
+		x2, y2 := locPlusDir(x, y, ag.dir)
+		if env.cells[x2][y2].agent != nil { // cannot move forward if front cell is blocked.
+			return
 		}
-		return
+		ag.energy = ag.energy - costOfMove
+		env.cells[x2][y2].agent = ag
+		env.cells[x][y].agent = nil
 	}
-	x2, y2 := locPlusDir(x, y, ag.dir)
-	if env.cells[x2][y2].agent != nil { // cannot move forward if front cell is blocked.
-		return
-	}
-	ag.energy = ag.energy - costOfMove
-	env.cells[x2][y2].agent = ag
-	env.cells[x][y].agent = nil
 }

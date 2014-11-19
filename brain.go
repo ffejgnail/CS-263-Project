@@ -4,6 +4,13 @@ import (
 	"math/rand"
 )
 
+const (
+	Move = 3
+	Eat  = 1 << (iota + 2)
+	Attack
+	Mate
+)
+
 type Brain interface {
 	// input as described above; output consists of 5 effective bits - 2 for move, 1 for eat, 1 for attack, 1 for mate. (an agent can only attack/mate with the agent in front of it.)
 	react([inputLen]uint8) uint8
