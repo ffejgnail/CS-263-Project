@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 func main() {
@@ -10,6 +11,12 @@ func main() {
 	for i := 0; i < numOfIterations; i++ {
 		env.run(i)
 	}
-	env.print()
+	f, err := os.Create("new.gif")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer f.Close()
+	env.WriteTo(f)
 	fmt.Println("end")
 }

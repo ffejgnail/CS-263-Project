@@ -4,8 +4,8 @@ import (
 	"image"
 	"image/color"
 	"image/gif"
+	"io"
 	"math/rand"
-	"os"
 )
 
 type EnvCell struct {
@@ -22,10 +22,8 @@ type Environment struct {
 	record   gif.GIF
 }
 
-func (env *Environment) print() { // generating GIF
-	outputImg, _ := os.Create("new.gif")
-	defer outputImg.Close()
-	gif.EncodeAll(outputImg, &env.record)
+func (env *Environment) WriteTo(w io.Writer) { // generating GIF
+	gif.EncodeAll(w, &env.record)
 }
 
 func (env *Environment) setup() {
@@ -65,7 +63,8 @@ func (env *Environment) setup() {
 		color.RGBA{0, 0, 255, 255},
 		color.RGBA{0, 0, 128, 255},
 		color.RGBA{255, 0, 255, 255},
-		color.RGBA{128, 0, 128, 255}}
+		color.RGBA{128, 0, 128, 255},
+	}
 	env.record.Image = make([]*image.Paletted, numOfIterations)
 	env.record.Delay = make([]int, numOfIterations)
 	for i := 0; i < numOfIterations; i++ {
