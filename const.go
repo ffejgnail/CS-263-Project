@@ -25,9 +25,9 @@ const inputLen int = 6 + 4*eyeRange
 // this number is currently used for appearance generation purpose. it is expected to be remove once a real Brain is implemented.
 var currentAgentNum uint8
 
-const initAgentNum uint8 = 16
-const numOfIterations int = 1600
+const initAgentNum uint8 = 32
+const numOfIterations int = 3000
 const initEnergy uint8 = 16
 const initHealth uint8 = 64
-const costOfMate uint8 = 128
+const costOfMate uint8 = 5
 const costOfMove uint8 = 1
