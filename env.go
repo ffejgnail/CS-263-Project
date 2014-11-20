@@ -17,22 +17,20 @@ type EnvCell struct {
 type Environment struct {
 	cells [envSize][envSize]EnvCell
 
-	// these 2 fields are for the purpose of recording and generating GIF in the end.
-	paletted []color.Color
-	record   gif.GIF
+	record gif.GIF
 }
 
-func (env *Environment) WriteTo(w io.Writer) { // generating GIF
-	gif.EncodeAll(w, &env.record)
+func (env *Environment) WriteTo(w io.Writer) error { // generating GIF
+	return gif.EncodeAll(w, &env.record)
 }
 
 func (env *Environment) setup() {
 	rand.Seed(42)
 	for i := 0; i < envSize; i++ {
 		for j := 0; j < envSize; j++ {
-			env.cells[i][j].growth = 1
+			env.cells[i][j].growth = uint8(rand.Intn(2)) + 2
+			//env.cells[i][j].food = env.cells[i][j].growth * 30
 		}
-		env.cells[i][i].growth = 10
 	}
 
 	for i := uint8(0); i < initAgentNum; i++ {
@@ -47,63 +45,97 @@ func (env *Environment) setup() {
 	}
 	currentAgentNum = initAgentNum
 
-	env.paletted = []color.Color{
-		color.RGBA{255, 255, 255, 255},
-		color.RGBA{192, 192, 192, 255},
-		color.RGBA{128, 128, 128, 255},
-		color.RGBA{0, 0, 0, 255},
-		color.RGBA{255, 0, 0, 255},
-		color.RGBA{128, 0, 0, 255},
-		color.RGBA{255, 255, 0, 255},
-		color.RGBA{128, 128, 0, 255},
-		color.RGBA{0, 255, 0, 255},
-		color.RGBA{0, 128, 0, 255},
-		color.RGBA{0, 255, 255, 255},
-		color.RGBA{0, 128, 128, 255},
-		color.RGBA{0, 0, 255, 255},
-		color.RGBA{0, 0, 128, 255},
-		color.RGBA{255, 0, 255, 255},
-		color.RGBA{128, 0, 128, 255},
-	}
 	env.record.Image = make([]*image.Paletted, numOfIterations)
 	env.record.Delay = make([]int, numOfIterations)
 	for i := 0; i < numOfIterations; i++ {
-		env.record.Delay[i] = 50
+		env.record.Delay[i] = 10
 	}
-	env.record.LoopCount = 256
+}
+
+var (
+	colors = []color.Color{
+		color.RGBA{30, 60, 30, 255},
+		color.RGBA{60, 120, 60, 255},
+		color.RGBA{90, 180, 90, 255},
+		color.RGBA{120, 240, 120, 255},
+		color.RGBA{240, 240, 120, 255},
+		color.RGBA{255, 0, 0, 255},
+	}
+)
+
+func appearanceColor(appear uint8) color.Color {
+	return colors[5]
+}
+
+func grassColor(grass uint8) color.Color {
+	if grass > 120 {
+		return colors[0]
+	}
+	if grass > 90 {
+		return colors[1]
+	}
+	if grass > 60 {
+		return colors[2]
+	}
+	if grass > 30 {
+		return colors[3]
+	}
+	return colors[4]
 }
 
 func (env *Environment) run(iter int) {
-	env.record.Image[iter] = image.NewPaletted(image.Rect(0, 0, envSize, envSize), env.paletted)
+	moved := make(map[*Agent]bool)
 	for i := 0; i < envSize; i++ {
 		for j := 0; j < envSize; j++ {
-			if env.cells[i][j].food < 255-env.cells[i][j].growth {
-				env.cells[i][j].food += env.cells[i][j].growth
+			cell := &env.cells[i][j]
+			if iter%8 == 0 {
+				growth := uint8(rand.Intn(int(cell.growth)))
+				if cell.food > 255-growth {
+					cell.food = 255
+				} else {
+					cell.food += growth
+				}
 			}
-			if env.cells[i][j].agent == nil || env.cells[i][j].agent.health == 0 { // agent with no health die
+			if cell.agent == nil {
+				continue
+			}
+			if moved[cell.agent] {
+				continue
+			}
+			moved[cell.agent] = true
+			if cell.agent.health == 0 { // agent with no health die
 				env.cells[i][j].agent = nil
 				continue
 			}
+			var input [inputLen]uint8 // TODO: write code to collect input for Brain.
 
+			output := cell.agent.brain.react(input)
+
+			if output&Eat != 0 {
+				cell.agent.eat(i, j, env)
+			}
+			if output&Attack != 0 {
+				cell.agent.attack(i, j, env)
+			}
+			if output&Mate != 0 {
+				cell.agent.mate(i, j, env)
+			}
+			cell.agent.move(output&Move, i, j, env)
+		}
+	}
+	img := image.NewPaletted(image.Rect(0, 0, envSize, envSize), colors)
+	for i := 0; i < envSize; i++ {
+		for j := 0; j < envSize; j++ {
 			// recording. (currently "appearance" must < 16, o.w. array out of bound.)
 			// TODO: determine color by agent's state (energy & health).
 			//	i.e.: bad state (low health & energy) as red, good state (high health & energy) as green.
-			env.record.Image[iter].Set(i, j, env.paletted[env.cells[i][j].agent.appearance])
-
-			var input [inputLen]uint8 // TODO: write code to collect input for Brain.
-
-			output := env.cells[i][j].agent.brain.react(input)
-
-			if output&Eat != 0 {
-				env.cells[i][j].agent.eat(i, j, env)
+			cell := &env.cells[i][j]
+			if cell.agent == nil {
+				img.Set(i, j, grassColor(cell.food))
+			} else {
+				img.Set(i, j, appearanceColor(cell.agent.appearance))
 			}
-			if output&Attack != 0 {
-				env.cells[i][j].agent.attack(i, j, env)
-			}
-			if output&Mate != 0 {
-				env.cells[i][j].agent.mate(i, j, env)
-			}
-			env.cells[i][j].agent.move(output&Move, i, j, env)
 		}
 	}
+	env.record.Image[iter] = img
 }

@@ -25,7 +25,7 @@ type Brain interface {
 type NoBrain struct{}
 
 func (nb *NoBrain) react(input [inputLen]uint8) uint8 {
-	return uint8(rand.Intn(255))
+	return Eat | uint8(rand.Intn(4))
 }
 
 func (nb *NoBrain) reproduce(mate Brain) (Brain, uint8) {

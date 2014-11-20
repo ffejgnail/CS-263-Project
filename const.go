@@ -26,8 +26,8 @@ const inputLen int = 6 + 4*eyeRange
 var currentAgentNum uint8
 
 const initAgentNum uint8 = 16
-const numOfIterations int = 16
+const numOfIterations int = 1600
 const initEnergy uint8 = 16
 const initHealth uint8 = 64
 const costOfMate uint8 = 128
-const costOfMove uint8 = 128
+const costOfMove uint8 = 1

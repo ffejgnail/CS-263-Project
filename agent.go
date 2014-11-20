@@ -109,6 +109,7 @@ func (ag *Agent) move(op uint8, x int, y int, env *Environment) {
 		ag.dir = (ag.dir + 3) & 3
 	case 3:
 		if ag.energy < costOfMove {
+			ag.energy = 0
 			return
 		}
 		x2, y2 := locPlusDir(x, y, ag.dir)
