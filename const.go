@@ -22,12 +22,11 @@ const eyeRange int = 8
 // agents' trajectory may be added as input to RBM in the future.
 const inputLen int = 6 + 4*eyeRange
 
-// this number is currently used for appearance generation purpose. it is expected to be remove once a real Brain is implemented.
-var currentAgentNum uint8
-
-const initAgentNum uint8 = 32
-const numOfIterations int = 3000
-const initEnergy uint8 = 16
-const initHealth uint8 = 64
-const costOfMate uint8 = 5
-const costOfMove uint8 = 1
+const (
+	initAgentNum    uint8 = 32
+	numOfIterations int   = 2000
+	initEnergy      uint8 = 16
+	initHealth      uint8 = 64
+	costOfMate      uint8 = 5
+	costOfMove      uint8 = 1
+)

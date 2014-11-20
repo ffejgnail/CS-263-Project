@@ -28,8 +28,8 @@ func (ag *Agent) eat(x int, y int, env *Environment) {
 		ag.energy += env.cells[x][y].food
 	}
 	env.cells[x][y].food = 0
-	if ag.energy > 192 && ag.health < 240 {
-		ag.health += 16 // agent recovers health when its energy is high.
+	if ag.energy > 192 && ag.health < 255 {
+		ag.health++ // agent recovers health when its energy is high.
 	}
 }
 
@@ -52,9 +52,10 @@ func locPlusDir(x int, y int, dir Direction) (int, int) {
 
 func (ag *Agent) attack(x int, y int, env *Environment) {
 	x2, y2 := locPlusDir(x, y, ag.dir)
+	agent := env.cells[x2][y2].agent
 
 	// cannot attack agent with energy higher than yourself.
-	if env.cells[x2][y2].agent == nil || env.cells[x2][y2].agent.energy > ag.energy {
+	if agent == nil || agent.energy > ag.energy {
 		// maybe there should be some punishment for attacking nothing.
 		return
 	}
@@ -63,19 +64,20 @@ func (ag *Agent) attack(x int, y int, env *Environment) {
 	harm := ag.energy >> 4
 
 	// if harm is too big, avoid "under-flow"
-	if harm > env.cells[x2][y2].agent.health {
-		env.cells[x2][y2].agent.health = 0
+	if harm > agent.health {
+		agent.health = 0
 	} else {
-		env.cells[x2][y2].agent.health -= harm
+		agent.health -= harm
 	}
 }
 
 func (ag *Agent) mate(x int, y int, env *Environment) {
 	x2, y2 := locPlusDir(x, y, ag.dir)
+	agent := env.cells[x2][y2].agent
 
 	// in order to mate successfully, the agent must have energy, and be in the same direction with the agent in front of it.
 	// current hard limit of total number of agents shall be replaced with some more clever manner of population control.
-	if currentAgentNum == initAgentNum || ag.energy < costOfMate || env.cells[x2][y2].agent == nil || env.cells[x2][y2].agent.dir != ag.dir {
+	if ag.energy < costOfMate || agent == nil || agent.dir != ag.dir {
 		return
 	}
 	ag.energy -= costOfMate
@@ -84,18 +86,19 @@ func (ag *Agent) mate(x int, y int, env *Environment) {
 		x3 := rand.Intn(envSize)
 		y3 := rand.Intn(envSize)
 		if env.cells[x3][y3].agent != nil {
-			continue
+			break
 		}
-		env.cells[x3][y3].agent = new(Agent)
-		env.cells[x3][y3].agent.brain, _ = ag.brain.reproduce(env.cells[x2][y2].agent.brain)
-		env.cells[x3][y3].agent.energy = initEnergy
-		env.cells[x3][y3].agent.health = initHealth
+		agent := new(Agent)
+		// get brain from the mate
+		agent.brain, _ = ag.brain.reproduce(env.cells[x2][y2].agent.brain)
+		agent.energy = initEnergy
+		agent.health = initHealth
 
 		// appearance shall be set by the second output of "reproduce".
-		env.cells[x3][y3].agent.appearance = currentAgentNum
-		currentAgentNum++
+		agent.appearance = ag.appearance
 
-		env.cells[x3][y3].agent.dir = Direction(rand.Intn(4))
+		agent.dir = Direction(rand.Intn(4))
+		env.cells[x3][y3].agent = agent
 		break
 	}
 }

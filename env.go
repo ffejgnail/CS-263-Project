@@ -36,14 +36,14 @@ func (env *Environment) setup() {
 	for i := uint8(0); i < initAgentNum; i++ {
 		x := rand.Intn(envSize)
 		y := rand.Intn(envSize)
-		env.cells[x][y].agent = new(Agent)
-		env.cells[x][y].agent.brain = new(NoBrain)
-		env.cells[x][y].agent.energy = initEnergy
-		env.cells[x][y].agent.health = initHealth
-		env.cells[x][y].agent.appearance = i
-		env.cells[x][y].agent.dir = Direction(rand.Intn(4))
+		agent := new(Agent)
+		agent.brain = new(NoBrain)
+		agent.energy = initEnergy
+		agent.health = initHealth
+		agent.appearance = i
+		agent.dir = Direction(rand.Intn(4))
+		env.cells[x][y].agent = agent
 	}
-	currentAgentNum = initAgentNum
 
 	env.record.Image = make([]*image.Paletted, numOfIterations)
 	env.record.Delay = make([]int, numOfIterations)
