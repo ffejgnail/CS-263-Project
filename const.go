@@ -6,6 +6,9 @@ const envSize int = 128
 // max number of other agents that an agent can sense at a time.
 const eyeRange int = 8
 
+// eyesight of an agent is 2*eyeSight+1 by 2*eyeSight+1
+const eyeSight int = 4
+
 // input size to the RBM is 8 * inputLen bits.
 // current design of input consists of:
 //	1. amount of food in current cell
@@ -25,6 +28,7 @@ const inputLen int = 6 + 4*eyeRange
 const (
 	initAgentNum    uint8 = 32
 	numOfIterations int   = 2000
+	grassGrowFreq   int   = 8
 	initEnergy      uint8 = 16
 	initHealth      uint8 = 64
 	costOfMate      uint8 = 5
