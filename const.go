@@ -4,10 +4,10 @@ package main
 const envSize int = 128
 
 // max number of other agents that an agent can sense at a time.
-const eyeRange int = 8
+const eventSize int = 8
 
-// eyesight of an agent is 2*eyeSight+1 by 2*eyeSight+1
-const eyeSight int = 4
+// sightRadius of an agent is a circle
+const sightRadius int = 4
 
 // input size to the RBM is 8 * inputLen bits.
 // current design of input consists of:
@@ -23,7 +23,7 @@ const eyeSight int = 4
 //		c. attack object's appearance
 //		d. mate object's appearance
 // agents' trajectory may be added as input to RBM in the future.
-const inputLen int = 6 + 4*eyeRange
+const inputLen int = 6 + 4*eventSize
 
 const (
 	initAgentNum    uint8 = 32

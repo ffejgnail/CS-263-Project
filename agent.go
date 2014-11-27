@@ -21,12 +21,94 @@ type Agent struct {
 	brain                      Brain
 }
 
-func (ag *Agent) eat(x int, y int, env *Environment) {
-	if ag.energy > 255-env.cells[x][y].food {
-		ag.energy = 255
-	} else {
-		ag.energy += env.cells[x][y].food
+func (ag *Agent) do(i int, j int, env *Environment) {
+	cell := &env.cells[i][j]
+	output := cell.agent.brain.react(ag.observe(i, j, env))
+
+	if output&Eat != 0 {
+		cell.agent.eat(i, j, env)
 	}
+	if output&Attack != 0 {
+		cell.agent.attack(i, j, env)
+	}
+	if output&Mate != 0 {
+		cell.agent.mate(i, j, env)
+	}
+	cell.agent.move(output&Move, i, j, env)
+}
+
+func (ag *Agent) observe(i int, j int, env *Environment) (input [inputLen]uint8) {
+	cell := &env.cells[i][j]
+	input[0] = cell.food
+	frontX, frontY := locPlusDir(i, j, cell.agent.dir)
+	frontCell := env.cells[frontX][frontY]
+	input[1] = frontCell.food
+	input[2] = cell.agent.energy
+	input[3] = cell.agent.health
+	if frontCell.agent != nil {
+		input[4] = frontCell.agent.energy
+		input[5] = frontCell.agent.health
+	}
+	event := 0
+observe:
+	for dist := 1; dist <= sightRadius; dist++ {
+		dir := Down //Down, Right, Up, Left
+		x := i - dist
+		y := j - dist
+	radius:
+		for {
+			xx := (x + envSize) % envSize
+			yy := (y + envSize) % envSize
+			cell2 := env.cells[xx][yy]
+			if cell2.agent != nil {
+				input[6+4*event] = cell2.agent.appearance
+				input[6+4*event+1] = (uint8(dir) + 3) % 4
+				input[6+4*event+2] = cell2.agent.energy
+				input[6+4*event+3] = cell2.agent.health
+				event++
+				if event == eventSize {
+					break observe
+				}
+			}
+
+			switch dir {
+			case Down:
+				if y < j+dist {
+					y++
+					if y == j+dist {
+						dir = Right
+					}
+				}
+			case Right:
+				if x < i+dist {
+					x++
+					if x == i+dist {
+						dir = Up
+					}
+				}
+			case Up:
+				if y > j-dist {
+					y--
+					if y == j-dist {
+						dir = Left
+					}
+				}
+			case Left:
+				if x > i-dist {
+					x--
+					if x == i-dist {
+						break radius
+					}
+				}
+			}
+
+		}
+	}
+	return
+}
+
+func (ag *Agent) eat(x int, y int, env *Environment) {
+	ag.energy = add(ag.energy, env.cells[x][y].food)
 	env.cells[x][y].food = 0
 	if ag.energy > 192 && ag.health < 255 {
 		ag.health++ // agent recovers health when its energy is high.
