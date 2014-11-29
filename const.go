@@ -1,13 +1,13 @@
 package main
 
 // size of the world. assume the world to be square instead of rectangular for simplicity.
-const envSize int = 128
+const envSize int = 16
 
 // max number of other agents that an agent can sense at a time.
-const eventSize int = 8
+const eventSize int = 4
 
 // sightRadius of an agent is a circle
-const sightRadius int = 4
+const sightRadius int = 2
 
 // input size to the RBM is 8 * inputLen bits.
 // current design of input consists of:
@@ -26,7 +26,7 @@ const sightRadius int = 4
 const inputLen int = 6 + 4*eventSize
 
 const (
-	initAgentNum    uint8 = 32
+	initAgentNum    uint8 = 8
 	numOfIterations int   = 2000
 	grassGrowFreq   int   = 8
 	initEnergy      uint8 = 16

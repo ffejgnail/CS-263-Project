@@ -31,7 +31,7 @@ func (ag *Agent) do(i int, j int, env *Environment) {
 	if output&Attack != 0 {
 		cell.agent.attack(i, j, env)
 	}
-	if output&Mate != 0 {
+	if false && output&Mate != 0 {
 		cell.agent.mate(i, j, env)
 	}
 	cell.agent.move(output&Move, i, j, env)
@@ -144,13 +144,7 @@ func (ag *Agent) attack(x int, y int, env *Environment) {
 
 	// harm of an attack is your energy / 16
 	harm := ag.energy >> 4
-
-	// if harm is too big, avoid "under-flow"
-	if harm > agent.health {
-		agent.health = 0
-	} else {
-		agent.health -= harm
-	}
+	agent.health = sub(agent.health, harm)
 }
 
 func (ag *Agent) mate(x int, y int, env *Environment) {
@@ -159,10 +153,10 @@ func (ag *Agent) mate(x int, y int, env *Environment) {
 
 	// in order to mate successfully, the agent must have energy, and be in the same direction with the agent in front of it.
 	// current hard limit of total number of agents shall be replaced with some more clever manner of population control.
-	if ag.energy < costOfMate || agent == nil || agent.dir != ag.dir {
+	if agent == nil || agent.dir != ag.dir {
 		return
 	}
-	ag.energy -= costOfMate
+	ag.energy = sub(ag.energy, costOfMate)
 	for {
 		// offspring is created at some random (empty) location, with random direction.
 		x3 := rand.Intn(envSize)
@@ -193,15 +187,11 @@ func (ag *Agent) move(op uint8, x int, y int, env *Environment) {
 	case 2: // turn right
 		ag.dir = (ag.dir + 3) & 3
 	case 3:
-		if ag.energy < costOfMove {
-			ag.energy = 0
-			return
-		}
 		x2, y2 := locPlusDir(x, y, ag.dir)
 		if env.cells[x2][y2].agent != nil { // cannot move forward if front cell is blocked.
 			return
 		}
-		ag.energy = ag.energy - costOfMove
+		ag.energy = sub(ag.energy, costOfMove)
 		env.cells[x2][y2].agent = ag
 		env.cells[x][y].agent = nil
 	}
