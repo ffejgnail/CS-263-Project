@@ -16,6 +16,8 @@ type EnvCell struct {
 
 type Environment struct {
 	cells [envSize][envSize]EnvCell
+	friend map[*Agent]map[*Agent]float32
+	score map[*Agent][]float32
 
 	record gif.GIF
 }
@@ -25,6 +27,9 @@ func (env *Environment) WriteTo(w io.Writer) error { // generating GIF
 }
 
 func (env *Environment) setup() {
+	env.friend = make(map[*Agent]map[*Agent]float32)
+	env.score = make(map[*Agent][]float32)
+
 	for i := 0; i < envSize; i++ {
 		for j := 0; j < envSize; j++ {
 			env.cells[i][j].growth = uint8(rand.Intn(2)) + 2
@@ -42,6 +47,8 @@ func (env *Environment) setup() {
 		agent.appearance = i
 		agent.dir = Direction(rand.Intn(4))
 		env.cells[x][y].agent = agent
+		env.friend[agent] = make(map[*Agent]float32)
+		env.score[agent] = make([]float32, trainScopeLen)
 	}
 
 	env.record.Image = make([]*image.Paletted, numOfIterations)
@@ -104,6 +111,26 @@ func (env *Environment) run(iter int) {
 			moved[cell.agent] = true
 			// observe, think, and do something
 			cell.agent.do(i, j, env)
+
+			fitness := float32(0.0)
+			for k := range env.friend[cell.agent] {
+				if k == cell.agent {
+					continue
+				}
+				fitness += float32(k.health) * env.friend[cell.agent][k]
+			}
+			k := iter - trainScopeLen + 1
+			if k < 0 {
+				k = 0
+			}
+			for k <= iter {
+				env.score[cell.agent][k] += fitness
+				k++
+			}
+			for k := iter + 1; k < iter+trainScopeLen; k++ {
+				env.score[cell.agent][k] -= fitness
+			}
+			env.score[cell.agent] = append(env.score[cell.agent], -fitness)
 		}
 	}
 	env.drawFrame(iter)

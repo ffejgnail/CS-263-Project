@@ -34,3 +34,6 @@ const (
 	costOfMate      uint8 = 5
 	costOfMove      uint8 = 1
 )
+
+const trainScopeLen int = 10
+const friendEnemyFactor float32 = 0.5
