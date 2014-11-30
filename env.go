@@ -48,7 +48,7 @@ func (env *Environment) setup() {
 		agent.dir = Direction(rand.Intn(4))
 		env.cells[x][y].agent = agent
 		env.friend[agent] = make(map[*Agent]float32)
-		env.score[agent] = make([]float32, trainScopeLen)
+		env.score[agent] = make([]float32, 2*trainScopeLen)
 	}
 
 	env.record.Image = make([]*image.Paletted, numOfIterations)
@@ -111,6 +111,9 @@ func (env *Environment) run(iter int) {
 			moved[cell.agent] = true
 			// observe, think, and do something
 			cell.agent.do(i, j, env)
+			if cell.agent == nil {
+				continue
+			}
 
 			fitness := float32(0.0)
 			for k := range env.friend[cell.agent] {
@@ -119,18 +122,14 @@ func (env *Environment) run(iter int) {
 				}
 				fitness += float32(k.health) * env.friend[cell.agent][k]
 			}
-			k := iter - trainScopeLen + 1
-			if k < 0 {
-				k = 0
-			}
-			for k <= iter {
+
+			env.score[cell.agent] = append(env.score[cell.agent][1:], 0)
+			for k := 0; k < trainScopeLen; k++ {
 				env.score[cell.agent][k] += fitness
-				k++
 			}
-			for k := iter + 1; k < iter+trainScopeLen; k++ {
+			for k := trainScopeLen; k < 2*trainScopeLen; k++ {
 				env.score[cell.agent][k] -= fitness
 			}
-			env.score[cell.agent] = append(env.score[cell.agent], -fitness)
 		}
 	}
 	env.drawFrame(iter)
