@@ -17,6 +17,7 @@ const (
 // record of trajectory will be added.
 type Agent struct {
 	energy, health, appearance uint8
+	atkobj, matobj             uint8
 	dir                        Direction
 	brain                      Brain
 }
@@ -28,9 +29,11 @@ func (ag *Agent) do(i int, j int, env *Environment) {
 	if output&Eat != 0 {
 		cell.agent.eat(i, j, env)
 	}
+	ag.atkobj = 0
 	if output&Attack != 0 {
 		cell.agent.attack(i, j, env)
 	}
+	ag.matobj = 0
 	if false && output&Mate != 0 {
 		cell.agent.mate(i, j, env)
 	}
@@ -63,8 +66,8 @@ observe:
 			if cell2.agent != nil {
 				input[6+4*event] = cell2.agent.appearance
 				input[6+4*event+1] = (uint8(dir) + 3) % 4
-				input[6+4*event+2] = cell2.agent.energy
-				input[6+4*event+3] = cell2.agent.health
+				input[6+4*event+2] = cell2.agent.atkobj
+				input[6+4*event+3] = cell2.agent.matobj
 				event++
 				if event == eventSize {
 					break observe
@@ -145,6 +148,15 @@ func (ag *Agent) attack(x int, y int, env *Environment) {
 	// harm of an attack is your energy / 16
 	harm := ag.energy >> 4
 	agent.health = sub(agent.health, harm)
+	ag.atkobj = agent.appearance
+
+	env.friend[agent][ag] -= 1.0
+	for k := range env.friend {
+		if k == ag || k == agent {
+			continue
+		}
+		env.friend[k][ag] -= friendEnemyFactor * env.friend[k][agent]
+	}
 }
 
 func (ag *Agent) mate(x int, y int, env *Environment) {
@@ -157,6 +169,7 @@ func (ag *Agent) mate(x int, y int, env *Environment) {
 		return
 	}
 	ag.energy = sub(ag.energy, costOfMate)
+	ag.matobj = agent.appearance
 	for {
 		// offspring is created at some random (empty) location, with random direction.
 		x3 := rand.Intn(envSize)
