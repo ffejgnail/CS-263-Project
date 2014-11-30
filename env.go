@@ -36,7 +36,7 @@ func (env *Environment) setup() {
 		x := rand.Intn(envSize)
 		y := rand.Intn(envSize)
 		agent := new(Agent)
-		agent.brain = new(NoBrain)
+		agent.brain = NewRBMBrain()
 		agent.energy = initEnergy
 		agent.health = initHealth
 		agent.appearance = i

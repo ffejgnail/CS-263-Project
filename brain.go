@@ -1,6 +1,8 @@
 package main
 
 import (
+	//"fmt"
+	"github.com/taylorchu/rbm"
 	"math/rand"
 )
 
@@ -30,4 +32,57 @@ func (nb *NoBrain) react(input [inputLen]uint8) uint8 {
 
 func (nb *NoBrain) reproduce(mate Brain) (Brain, uint8) {
 	return new(NoBrain), 0
+}
+
+type RBMBrain struct {
+	m       *rbm.RBM
+	history [][]uint8
+}
+
+const rbmSize = 8*inputLen + 5
+const historySize = 10
+
+func NewRBMBrain() *RBMBrain {
+	return &RBMBrain{
+		m: rbm.New(rbmSize),
+	}
+}
+
+func (b *RBMBrain) reproduce(mate Brain) (Brain, uint8) {
+	return b, 0
+}
+
+func expandBits(bs []uint8) (bits []uint8) {
+	for _, b := range bs {
+		var i uint8
+		for i = 7; i < 8; i-- {
+			//fmt.Println(b, i, b&(1<<i) != 0)
+			if b&(1<<i) != 0 {
+				bits = append(bits, 1)
+			} else {
+				bits = append(bits, 0)
+			}
+		}
+	}
+	return
+}
+
+func compress(bits []uint8) (b uint8) {
+	for i := 0; i < len(bits); i++ {
+		if bits[i] == 1 {
+			b |= 1 << uint8(len(bits)-i-1)
+		}
+	}
+	return
+}
+
+func (b *RBMBrain) react(input [inputLen]uint8) (output uint8) {
+	rawInput := make([]uint8, rbmSize)
+	copy(rawInput, expandBits(input[:]))
+	rawOutput := b.m.Reconstruct(rawInput, 3)
+	//b.history = append(b.history, rawOutput)
+	//if len(b.history) > historySize {
+	//	b.history = b.history[1:]
+	//}
+	return compress(rawOutput[rbmSize-5 : rbmSize])
 }
