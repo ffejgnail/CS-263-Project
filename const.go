@@ -1,7 +1,7 @@
 package main
 
 // size of the world. assume the world to be square instead of rectangular for simplicity.
-const envSize int = 30
+const envSize int = 16
 
 // max number of other agents that an agent can sense at a time.
 const eventSize int = 4
@@ -27,12 +27,12 @@ const inputLen int = 6 + 4*eventSize
 
 const (
 	initAgentNum    uint8 = 4
-	numOfIterations int   = 500
+	numOfIterations int   = 2000
 	grassGrowFreq   int   = 8
-	initEnergy      uint8 = 16
-	initHealth      uint8 = 64
+	initEnergy      uint8 = 4
+	initHealth      uint8 = 16
 	costOfMate      uint8 = 5
-	costOfMove      uint8 = 1
+	costOfMove      uint8 = 2
 )
 
 const trainScopeLen int = 10

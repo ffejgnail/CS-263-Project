@@ -32,8 +32,8 @@ func (env *Environment) setup() {
 
 	for i := 0; i < envSize; i++ {
 		for j := 0; j < envSize; j++ {
-			env.cells[i][j].growth = uint8(rand.Intn(2)) + 2
-			//env.cells[i][j].food = env.cells[i][j].growth * 30
+			//env.cells[i][j].growth = uint8(rand.Intn(2)) + 2
+			env.cells[i][j].food = uint8(rand.Intn(2))
 		}
 	}
 
@@ -66,6 +66,7 @@ var (
 		color.RGBA{120, 240, 120, 255},
 		color.RGBA{240, 240, 120, 255},
 		color.RGBA{255, 0, 0, 255},
+		color.RGBA{255, 255, 255, 255},
 	}
 )
 
@@ -86,7 +87,10 @@ func grassColor(grass uint8) color.Color {
 	if grass > 30 {
 		return colors[3]
 	}
-	return colors[4]
+	if grass > 0 {
+		return colors[4]
+	}
+	return colors[6]
 }
 
 func (env *Environment) run(iter int) {
@@ -99,7 +103,7 @@ func (env *Environment) run(iter int) {
 	for i := 0; i < envSize; i++ {
 		for j := 0; j < envSize; j++ {
 			cell := &env.cells[i][j]
-			if iter%grassGrowFreq == 0 {
+			if iter%grassGrowFreq == 0 && cell.growth > 0 {
 				growth := uint8(rand.Intn(int(cell.growth)))
 				cell.food = add(cell.food, growth)
 			}
@@ -120,6 +124,9 @@ func (env *Environment) run(iter int) {
 	for _, r := range rand.Perm(len(agents)) {
 		al := agents[r]
 		agent := al.agent
+		// train
+		agent.brain.train(env.score[agent][0])
+
 		// observe, think, and do something
 		agent.do(al.i, al.j, env)
 		var fitness float32
@@ -127,8 +134,6 @@ func (env *Environment) run(iter int) {
 			fitness += float32(k.health) * env.friend[agent][k]
 		}
 
-		// train
-		agent.brain.train(env.score[agent][0])
 		env.score[agent] = append(env.score[agent][1:], 0)
 		for k := 0; k < trainScopeLen; k++ {
 			env.score[agent][k] += fitness

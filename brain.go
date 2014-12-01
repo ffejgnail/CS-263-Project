@@ -46,7 +46,8 @@ const rbmSize = 8*inputLen + 5
 
 func NewRBMBrain() *RBMBrain {
 	return &RBMBrain{
-		m: rbm.New(rbmSize),
+		m:       rbm.New(rbmSize),
+		history: make([][]uint8, trainScopeLen*2),
 	}
 }
 
@@ -59,7 +60,7 @@ func (b *RBMBrain) train(score float32) {
 		return
 	}
 	//fmt.Println(score)
-	b.m.Train(b.history, 0.1, int(score))
+	b.m.Train(b.history[0:1], 0.1, int(score))
 }
 
 func expandBits(bs []uint8) (bits []uint8) {
@@ -89,9 +90,6 @@ func (b *RBMBrain) react(input [inputLen]uint8) (output uint8) {
 	rawInput := make([]uint8, rbmSize)
 	copy(rawInput, expandBits(input[:]))
 	rawOutput := b.m.Reconstruct(rawInput, 3)
-	b.history = append(b.history, rawOutput)
-	if len(b.history) > trainScopeLen {
-		b.history = b.history[1:]
-	}
+	b.history = append(b.history[1:], rawOutput)
 	return compressBits(rawOutput[rbmSize-5 : rbmSize])
 }
