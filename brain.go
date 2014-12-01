@@ -18,6 +18,7 @@ type Brain interface {
 	react([inputLen]uint8) uint8
 
 	// a "train" method shall be added as training is not real-time (separated from react).
+	train(float32)
 
 	// 2 brains reproduce an offspring (new brain). the second output is the offspring's appearance.
 	reproduce(Brain) (Brain, uint8)
@@ -27,12 +28,14 @@ type Brain interface {
 type NoBrain struct{}
 
 func (nb *NoBrain) react(input [inputLen]uint8) uint8 {
-	return Eat | uint8(rand.Intn(4)) | Mate | Attack
+	return Eat | uint8(rand.Intn(4)) | Attack
 }
 
 func (nb *NoBrain) reproduce(mate Brain) (Brain, uint8) {
 	return new(NoBrain), 0
 }
+
+func (nb *NoBrain) train(score float32) {}
 
 type RBMBrain struct {
 	m       *rbm.RBM
@@ -40,7 +43,6 @@ type RBMBrain struct {
 }
 
 const rbmSize = 8*inputLen + 5
-const historySize = 10
 
 func NewRBMBrain() *RBMBrain {
 	return &RBMBrain{
@@ -52,11 +54,18 @@ func (b *RBMBrain) reproduce(mate Brain) (Brain, uint8) {
 	return b, 0
 }
 
+func (b *RBMBrain) train(score float32) {
+	if score <= 0 {
+		return
+	}
+	//fmt.Println(score)
+	b.m.Train(b.history, 0.1, int(score))
+}
+
 func expandBits(bs []uint8) (bits []uint8) {
 	for _, b := range bs {
 		var i uint8
 		for i = 7; i < 8; i-- {
-			//fmt.Println(b, i, b&(1<<i) != 0)
 			if b&(1<<i) != 0 {
 				bits = append(bits, 1)
 			} else {
@@ -67,7 +76,7 @@ func expandBits(bs []uint8) (bits []uint8) {
 	return
 }
 
-func compress(bits []uint8) (b uint8) {
+func compressBits(bits []uint8) (b uint8) {
 	for i := 0; i < len(bits); i++ {
 		if bits[i] == 1 {
 			b |= 1 << uint8(len(bits)-i-1)
@@ -80,9 +89,9 @@ func (b *RBMBrain) react(input [inputLen]uint8) (output uint8) {
 	rawInput := make([]uint8, rbmSize)
 	copy(rawInput, expandBits(input[:]))
 	rawOutput := b.m.Reconstruct(rawInput, 3)
-	//b.history = append(b.history, rawOutput)
-	//if len(b.history) > historySize {
-	//	b.history = b.history[1:]
-	//}
-	return compress(rawOutput[rbmSize-5 : rbmSize])
+	b.history = append(b.history, rawOutput)
+	if len(b.history) > trainScopeLen {
+		b.history = b.history[1:]
+	}
+	return compressBits(rawOutput[rbmSize-5 : rbmSize])
 }

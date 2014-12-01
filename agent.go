@@ -34,7 +34,7 @@ func (ag *Agent) do(i int, j int, env *Environment) {
 		cell.agent.attack(i, j, env)
 	}
 	ag.matobj = 0
-	if false && output&Mate != 0 {
+	if output&Mate != 0 {
 		cell.agent.mate(i, j, env)
 	}
 	cell.agent.move(output&Move, i, j, env)

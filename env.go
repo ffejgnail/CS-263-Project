@@ -15,9 +15,9 @@ type EnvCell struct {
 }
 
 type Environment struct {
-	cells [envSize][envSize]EnvCell
+	cells  [envSize][envSize]EnvCell
 	friend map[*Agent]map[*Agent]float32
-	score map[*Agent][]float32
+	score  map[*Agent][]float32
 
 	record gif.GIF
 }
@@ -90,7 +90,12 @@ func grassColor(grass uint8) color.Color {
 }
 
 func (env *Environment) run(iter int) {
-	moved := make(map[*Agent]bool)
+	type AgentLocation struct {
+		agent *Agent
+		i     int
+		j     int
+	}
+	var agents []*AgentLocation
 	for i := 0; i < envSize; i++ {
 		for j := 0; j < envSize; j++ {
 			cell := &env.cells[i][j]
@@ -105,31 +110,31 @@ func (env *Environment) run(iter int) {
 				env.cells[i][j].agent = nil
 				continue
 			}
-			if moved[cell.agent] {
-				continue
-			}
-			moved[cell.agent] = true
-			// observe, think, and do something
-			cell.agent.do(i, j, env)
-			if cell.agent == nil {
-				continue
-			}
+			agents = append(agents, &AgentLocation{
+				agent: cell.agent,
+				i:     i,
+				j:     j,
+			})
+		}
+	}
+	for _, r := range rand.Perm(len(agents)) {
+		al := agents[r]
+		agent := al.agent
+		// observe, think, and do something
+		agent.do(al.i, al.j, env)
+		var fitness float32
+		for k := range env.friend[agent] {
+			fitness += float32(k.health) * env.friend[agent][k]
+		}
 
-			fitness := float32(0.0)
-			for k := range env.friend[cell.agent] {
-				if k == cell.agent {
-					continue
-				}
-				fitness += float32(k.health) * env.friend[cell.agent][k]
-			}
-
-			env.score[cell.agent] = append(env.score[cell.agent][1:], 0)
-			for k := 0; k < trainScopeLen; k++ {
-				env.score[cell.agent][k] += fitness
-			}
-			for k := trainScopeLen; k < 2*trainScopeLen; k++ {
-				env.score[cell.agent][k] -= fitness
-			}
+		// train
+		agent.brain.train(env.score[agent][0])
+		env.score[agent] = append(env.score[agent][1:], 0)
+		for k := 0; k < trainScopeLen; k++ {
+			env.score[agent][k] += fitness
+		}
+		for k := trainScopeLen; k < 2*trainScopeLen; k++ {
+			env.score[agent][k] -= fitness
 		}
 	}
 	env.drawFrame(iter)
