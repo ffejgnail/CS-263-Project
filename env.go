@@ -66,7 +66,7 @@ var (
 		color.RGBA{120, 240, 120, 255},
 		color.RGBA{240, 240, 120, 255},
 		color.RGBA{255, 0, 0, 255},
-		color.RGBA{255, 255, 255, 255},
+		color.RGBA{128, 128, 128, 255},
 	}
 )
 

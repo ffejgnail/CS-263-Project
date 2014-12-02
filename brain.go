@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"fmt"
+	"fmt"
 	"github.com/taylorchu/rbm"
 	"math/rand"
 )
@@ -56,11 +56,11 @@ func (b *RBMBrain) reproduce(mate Brain) (Brain, uint8) {
 }
 
 func (b *RBMBrain) train(score float32) {
-	if score <= 0 {
+	if score < 1 {
 		return
 	}
-	//fmt.Println(score)
-	b.m.Train(b.history[0:1], 0.1, int(score))
+	fmt.Println("score", score)
+	b.m.Train(b.history[:1], 0.1, int(score))
 }
 
 func expandBits(bs []uint8) (bits []uint8) {

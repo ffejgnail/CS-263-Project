@@ -7,7 +7,7 @@ const envSize int = 16
 const eventSize int = 4
 
 // sightRadius of an agent is a circle
-const sightRadius int = 2
+const sightRadius int = 4
 
 // input size to the RBM is 8 * inputLen bits.
 // current design of input consists of:
@@ -31,9 +31,9 @@ const (
 	grassGrowFreq   int   = 8
 	initEnergy      uint8 = 4
 	initHealth      uint8 = 16
-	costOfMate      uint8 = 5
+	costOfMate      uint8 = 3
 	costOfMove      uint8 = 2
 )
 
 const trainScopeLen int = 10
-const friendEnemyFactor float32 = 0.5
+const friendEnemyFactor float32 = 0.1

@@ -16,7 +16,7 @@ func main() {
 	env.setup()
 	for i := 0; i < numOfIterations; i++ {
 		env.run(i)
-		fmt.Printf("%d/%d\r", i, numOfIterations)
+		fmt.Printf("[%d/%d]\n", i+1, numOfIterations)
 	}
 	f, err := os.Create(*export)
 	if err != nil {
