@@ -25,7 +25,7 @@ func (a *Animat) Do(x, y int, env *Environment) {
 	a.Move(output.Move, x, y, env)
 	a.Eat(x, y, env)
 	a.TargetFace = 0
-	if false && output.Attack {
+	if output.Attack {
 		a.Attack(x, y, env)
 	}
 }
@@ -56,11 +56,7 @@ func (a *Animat) Observe(x, y int, env *Environment) *BrainInput {
 }
 
 func (a *Animat) Eat(x, y int, env *Environment) {
-	if env.Cell[x][y].Food == 0 {
-		return
-	}
-	a.Health += EatGain
-	//env.Cell[x][y].Food = sub(env.Cell[x][y].Food, 1)
+	a.Health += int(env.Cell[x][y].Food)
 }
 
 func relLoc(x, y, rx, ry int) (int, int) {
