@@ -140,7 +140,9 @@ func (env *Environment) Run(iter int) {
 		l := list[r]
 		a := l.Animat
 		// train
-		fmt.Printf("animat %d: %f\n", a.Face, env.Score[a][0])
+		if Iteration-iter <= RecordIteration {
+			fmt.Printf("animat %d score: %f; ",a.Face,env.Score[a][0])
+		}
 		a.Brain.Reward(env.Score[a][0])
 
 		// observe, think, and do something
@@ -149,6 +151,10 @@ func (env *Environment) Run(iter int) {
 		//for f := range env.Reputation[a] {
 		//	fitness += env.Reputation[a][f]
 		//}
+
+		if Iteration-iter <= RecordIteration {
+			fmt.Printf("health: %f\n", fitness)
+		}
 
 		env.Score[a] = append(env.Score[a][1:], 0)
 		for k := 0; k < TrainScope; k++ {

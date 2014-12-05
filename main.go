@@ -15,7 +15,9 @@ func main() {
 	flag.Parse()
 	env := NewEnvironment()
 	for i := 0; i < Iteration; i++ {
-		fmt.Printf("[%d/%d]\n", i+1, Iteration)
+		if Iteration-i <= RecordIteration {
+			fmt.Printf("[%d/%d]\n", i+1, Iteration)
+		}
 		env.Run(i)
 	}
 	f, err := os.Create(*export)
