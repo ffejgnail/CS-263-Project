@@ -1,95 +1,109 @@
 package main
 
-import (
-	"fmt"
-	"github.com/taylorchu/rbm"
-	"math/rand"
-)
+import "github.com/taylorchu/rbm"
+
+//   | 0 |
+// 1 |   | 3
+//   | 2 |
+
+type Nearby struct {
+	HasAnimat       bool
+	OtherFace       Face
+	OtherTargetFace Face
+	MoreHealth      bool
+	MoreFood        bool
+}
+
+type BrainInput struct {
+	MyFace       Face
+	MyTargetFace Face
+	Nearby       [4]Nearby
+}
 
 const (
-	Move = 3
-	Eat  = 1 << (iota + 2)
-	Attack
-	Mate
+	InputSize  = 21 // 1 + 5 * 4
+	OutputSize = 3
 )
 
+func (bi *BrainInput) Encode(b []uint8) {
+	if bi.MyFace == bi.MyTargetFace {
+		b[0] = 1
+	}
+	for i := 0; i < 4; i++ {
+		off := 1 + 5*i
+		if bi.Nearby[i].OtherFace == bi.MyFace {
+			b[off] = 1
+		}
+		if bi.Nearby[i].OtherTargetFace == bi.MyFace {
+			b[off+1] = 1
+		}
+		if bi.Nearby[i].MoreHealth {
+			b[off+2] = 1
+		}
+		if bi.Nearby[i].MoreFood {
+			b[off+3] = 1
+		}
+		if bi.Nearby[i].HasAnimat {
+			b[off+4] = 1
+		}
+	}
+}
+
+func encodeFace(f Face) (uint8, uint8, uint8) {
+	return uint8(f) & 7 >> 2, uint8(f) & 3 >> 1, uint8(f) & 1
+}
+
+type Move uint8
+
+const (
+	Stay Move = iota
+	TurnLeft
+	TurnRight
+	Forward
+)
+
+type BrainOutput struct {
+	Attack bool
+	Move   Move
+}
+
 type Brain interface {
-	// input as described above; output consists of 5 effective bits - 2 for move, 1 for eat, 1 for attack, 1 for mate. (an agent can only attack/mate with the agent in front of it.)
-	react([inputLen]uint8) uint8
-
-	// a "train" method shall be added as training is not real-time (separated from react).
-	train(float32)
-
-	// 2 brains reproduce an offspring (new brain). the second output is the offspring's appearance.
-	reproduce(Brain) (Brain, uint8)
+	React(*BrainInput) *BrainOutput
+	Reward(score float64)
 }
-
-// NoBrain is a faked stuff for testing purpose.
-type NoBrain struct{}
-
-func (nb *NoBrain) react(input [inputLen]uint8) uint8 {
-	return Eat | uint8(rand.Intn(4)) | Attack
-}
-
-func (nb *NoBrain) reproduce(mate Brain) (Brain, uint8) {
-	return new(NoBrain), 0
-}
-
-func (nb *NoBrain) train(score float32) {}
 
 type RBMBrain struct {
-	m       *rbm.RBM
-	history [][]uint8
+	*rbm.RBM
+	Mem [][]uint8
 }
-
-const rbmSize = 8*inputLen + 5
 
 func NewRBMBrain() *RBMBrain {
 	return &RBMBrain{
-		m:       rbm.New(rbmSize),
-		history: make([][]uint8, trainScopeLen*2),
+		RBM: rbm.New(InputSize + OutputSize),
+		Mem: make([][]uint8, TrainScope*2),
 	}
 }
 
-func (b *RBMBrain) reproduce(mate Brain) (Brain, uint8) {
-	return b, 0
-}
-
-func (b *RBMBrain) train(score float32) {
-	if score < 1 {
+func (b *RBMBrain) Reward(score float64) {
+	if score < 1 || len(b.Mem[0]) != InputSize+OutputSize {
 		return
 	}
-	fmt.Println("score", score)
-	b.m.Train(b.history[:1], 0.1, int(score))
+	b.Train(b.Mem[:1], 0.1, int(score))
 }
 
-func expandBits(bs []uint8) (bits []uint8) {
-	for _, b := range bs {
-		var i uint8
-		for i = 7; i < 8; i-- {
-			if b&(1<<i) != 0 {
-				bits = append(bits, 1)
-			} else {
-				bits = append(bits, 0)
-			}
-		}
+func (b *RBMBrain) React(input *BrainInput) *BrainOutput {
+	raw := make([]uint8, InputSize+OutputSize)
+	input.Encode(raw)
+	rawOutput := b.Reconstruct(raw, 3)
+	b.Mem = append(b.Mem[1:], rawOutput)
+	output := new(BrainOutput)
+	output.Attack = rawOutput[len(rawOutput)-3] == 1
+
+	if rawOutput[len(rawOutput)-2] == 1 {
+		output.Move |= 2
 	}
-	return
-}
-
-func compressBits(bits []uint8) (b uint8) {
-	for i := 0; i < len(bits); i++ {
-		if bits[i] == 1 {
-			b |= 1 << uint8(len(bits)-i-1)
-		}
+	if rawOutput[len(rawOutput)-1] == 1 {
+		output.Move |= 1
 	}
-	return
-}
-
-func (b *RBMBrain) react(input [inputLen]uint8) (output uint8) {
-	rawInput := make([]uint8, rbmSize)
-	copy(rawInput, expandBits(input[:]))
-	rawOutput := b.m.Reconstruct(rawInput, 3)
-	b.history = append(b.history[1:], rawOutput)
-	return compressBits(rawOutput[rbmSize-5 : rbmSize])
+	return output
 }

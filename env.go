@@ -1,23 +1,24 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/gif"
 	"io"
 	"math/rand"
+	"os"
 )
 
 type EnvCell struct {
-	food   uint8
-	growth uint8
-	agent  *Agent
+	Food   uint8 // 0, 1, 2, 3, 4
+	Animat *Animat
 }
 
 type Environment struct {
-	cells  [envSize][envSize]EnvCell
-	friend map[*Agent]map[*Agent]float32
-	score  map[*Agent][]float32
+	Cell       [EnvSize][EnvSize]EnvCell
+	Reputation map[*Animat]map[Face]float64
+	Score      map[*Animat][]float64
 
 	record gif.GIF
 }
@@ -26,134 +27,158 @@ func (env *Environment) WriteTo(w io.Writer) error { // generating GIF
 	return gif.EncodeAll(w, &env.record)
 }
 
-func (env *Environment) setup() {
-	env.friend = make(map[*Agent]map[*Agent]float32)
-	env.score = make(map[*Agent][]float32)
+func (env *Environment) relCell(x, y, rx, ry int) *EnvCell {
+	x2, y2 := relLoc(x, y, rx, ry)
+	return &env.Cell[x2][y2]
+}
 
-	for i := 0; i < envSize; i++ {
-		for j := 0; j < envSize; j++ {
-			//env.cells[i][j].growth = uint8(rand.Intn(2)) + 2
-			env.cells[i][j].food = uint8(rand.Intn(2))
+func NewEnvironment() *Environment {
+	env := new(Environment)
+	env.Reputation = make(map[*Animat]map[Face]float64)
+	env.Score = make(map[*Animat][]float64)
+
+	cx := EnvSize / 2
+	cy := EnvSize / 2
+	for i := -4; i <= 4; i++ {
+		for j := -4; j <= 4; j++ {
+			for k := 0; k <= 4; k++ {
+				if i*i+j*j < k*k {
+					env.relCell(cx, cy, i, j).Food = uint8(4 - k)
+					break
+				}
+			}
 		}
 	}
 
-	for i := uint8(0); i < initAgentNum; i++ {
-		x := rand.Intn(envSize)
-		y := rand.Intn(envSize)
-		agent := new(Agent)
-		agent.brain = NewRBMBrain()
-		agent.energy = initEnergy
-		agent.health = initHealth
-		agent.appearance = i
-		agent.dir = Direction(rand.Intn(4))
-		env.cells[x][y].agent = agent
-		env.friend[agent] = make(map[*Agent]float32)
-		env.score[agent] = make([]float32, 2*trainScopeLen)
+	for i := uint8(0); i < InitAnimatNum; i++ {
+		x := rand.Intn(EnvSize)
+		y := rand.Intn(EnvSize)
+		a := &Animat{
+			Brain:     NewRBMBrain(),
+			Face:      Face(i % 8),
+			Direction: Direction(i % 4),
+		}
+		env.Cell[x][y].Animat = a
+		env.Reputation[a] = make(map[Face]float64)
+		env.Score[a] = make([]float64, 2*TrainScope)
+		f, err := os.Open(*brainData)
+		if err != nil {
+			continue
+		}
+		a.Brain.(*RBMBrain).Decode(f)
+		f.Close()
 	}
 
-	env.record.Image = make([]*image.Paletted, numOfIterations)
-	env.record.Delay = make([]int, numOfIterations)
-	for i := 0; i < numOfIterations; i++ {
-		env.record.Delay[i] = 10
+	env.record.Image = make([]*image.Paletted, RecordIteration)
+	env.record.Delay = make([]int, RecordIteration)
+	for i := 0; i < RecordIteration; i++ {
+		env.record.Delay[i] = 5
 	}
+	return env
 }
 
 var (
-	colors = []color.Color{
-		color.RGBA{30, 60, 30, 255},
-		color.RGBA{60, 120, 60, 255},
-		color.RGBA{90, 180, 90, 255},
-		color.RGBA{120, 240, 120, 255},
-		color.RGBA{240, 240, 120, 255},
-		color.RGBA{255, 0, 0, 255},
-		color.RGBA{128, 128, 128, 255},
-	}
+	GrassColor1 = color.RGBA{30, 60, 30, 255}
+	GrassColor2 = color.RGBA{60, 120, 60, 255}
+	GrassColor3 = color.RGBA{90, 180, 90, 255}
+	GrassColor4 = color.RGBA{120, 240, 120, 255}
+	GrassColor5 = color.RGBA{240, 240, 120, 255}
+	AnimatColor = color.RGBA{255, 0, 0, 255}
 )
 
-func appearanceColor(appear uint8) color.Color {
-	return colors[5]
+func faceColor(f Face) color.Color {
+	return AnimatColor
 }
 
 func grassColor(grass uint8) color.Color {
-	if grass > 120 {
-		return colors[0]
+	if grass > 3 {
+		return GrassColor1
 	}
-	if grass > 90 {
-		return colors[1]
+	if grass > 2 {
+		return GrassColor2
 	}
-	if grass > 60 {
-		return colors[2]
-	}
-	if grass > 30 {
-		return colors[3]
+	if grass > 1 {
+		return GrassColor3
 	}
 	if grass > 0 {
-		return colors[4]
+		return GrassColor4
 	}
-	return colors[6]
+	return GrassColor5
 }
 
-func (env *Environment) run(iter int) {
-	type AgentLocation struct {
-		agent *Agent
-		i     int
-		j     int
+func (env *Environment) Run(iter int) {
+	type Location struct {
+		Animat *Animat
+		X      int
+		Y      int
 	}
-	var agents []*AgentLocation
-	for i := 0; i < envSize; i++ {
-		for j := 0; j < envSize; j++ {
-			cell := &env.cells[i][j]
-			if iter%grassGrowFreq == 0 && cell.growth > 0 {
-				growth := uint8(rand.Intn(int(cell.growth)))
-				cell.food = add(cell.food, growth)
-			}
-			if cell.agent == nil {
+	var list []*Location
+	for i := 0; i < EnvSize; i++ {
+		for j := 0; j < EnvSize; j++ {
+			cell := &env.Cell[i][j]
+			if cell.Animat == nil {
 				continue
 			}
-			if cell.agent.health == 0 { // agent with no health die
-				env.cells[i][j].agent = nil
-				continue
-			}
-			agents = append(agents, &AgentLocation{
-				agent: cell.agent,
-				i:     i,
-				j:     j,
+			//if cell.Animat.Health == 0 { // no health die
+			//f, err := os.Create(*brainData)
+			//if err != nil {
+			//	continue
+			//}
+			//cell.Animat.Brain.(*RBMBrain).Encode(f)
+			//f.Close()
+			//	env.Cell[i][j].Animat = nil
+			//	continue
+			//}
+			list = append(list, &Location{
+				Animat: cell.Animat,
+				X:      i,
+				Y:      j,
 			})
 		}
 	}
-	for _, r := range rand.Perm(len(agents)) {
-		al := agents[r]
-		agent := al.agent
+	for _, r := range rand.Perm(len(list)) {
+		l := list[r]
+		a := l.Animat
 		// train
-		agent.brain.train(env.score[agent][0])
+		fmt.Printf("animat %d: %f\n", a.Face, env.Score[a][0])
+		a.Brain.Reward(env.Score[a][0])
 
 		// observe, think, and do something
-		agent.do(al.i, al.j, env)
-		var fitness float32
-		for k := range env.friend[agent] {
-			fitness += float32(k.health) * env.friend[agent][k]
-		}
+		a.Do(l.X, l.Y, env)
+		fitness := float64(a.Health)
+		//for f := range env.Reputation[a] {
+		//	fitness += env.Reputation[a][f]
+		//}
 
-		env.score[agent] = append(env.score[agent][1:], 0)
-		for k := 0; k < trainScopeLen; k++ {
-			env.score[agent][k] += fitness
+		env.Score[a] = append(env.Score[a][1:], 0)
+		for k := 0; k < TrainScope; k++ {
+			env.Score[a][k] += fitness
 		}
-		for k := trainScopeLen; k < 2*trainScopeLen; k++ {
-			env.score[agent][k] -= fitness
+		for k := TrainScope; k < 2*TrainScope; k++ {
+			env.Score[a][k] -= fitness
 		}
 	}
-	env.drawFrame(iter)
+	if Iteration-iter <= RecordIteration {
+		env.drawFrame(Iteration - iter - 1)
+	}
 }
 
 func (env *Environment) drawFrame(iter int) {
-	img := image.NewPaletted(image.Rect(0, 0, envSize, envSize), colors)
-	for i := 0; i < envSize; i++ {
-		for j := 0; j < envSize; j++ {
-			cell := &env.cells[i][j]
-			if cell.agent == nil {
-				img.Set(i, j, grassColor(cell.food))
+	img := image.NewPaletted(image.Rect(0, 0, EnvSize, EnvSize), []color.Color{
+		GrassColor1,
+		GrassColor2,
+		GrassColor3,
+		GrassColor4,
+		GrassColor5,
+		AnimatColor,
+	})
+	for i := 0; i < EnvSize; i++ {
+		for j := 0; j < EnvSize; j++ {
+			cell := &env.Cell[i][j]
+			if cell.Animat == nil {
+				img.Set(i, j, grassColor(cell.Food))
 			} else {
-				img.Set(i, j, appearanceColor(cell.agent.appearance))
+				img.Set(i, j, faceColor(cell.Animat.Face))
 			}
 		}
 	}

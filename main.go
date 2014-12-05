@@ -7,16 +7,16 @@ import (
 )
 
 var (
-	export = flag.String("o", "new.gif", "output file")
+	export    = flag.String("o", "new.gif", "output file")
+	brainData = flag.String("b", "data.json", "brain json file")
 )
 
 func main() {
 	flag.Parse()
-	var env Environment
-	env.setup()
-	for i := 0; i < numOfIterations; i++ {
-		env.run(i)
-		fmt.Printf("[%d/%d]\n", i+1, numOfIterations)
+	env := NewEnvironment()
+	for i := 0; i < Iteration; i++ {
+		fmt.Printf("[%d/%d]\n", i+1, Iteration)
+		env.Run(i)
 	}
 	f, err := os.Create(*export)
 	if err != nil {
