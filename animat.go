@@ -34,14 +34,11 @@ func (a *Animat) Observe(x, y int, env *Environment) *BrainInput {
 	input := new(BrainInput)
 	input.MyFace = a.Face
 	input.MyTargetFace = a.TargetFace
-	for i, n := range [][]int{
-		{0, -1},
-		{-1, 0},
-		{0, 1},
-		{1, 0},
-	} {
-		cell := env.relCell(x, y, n[0], n[1])
-		var nearby Nearby
+
+	for i, d := range []Direction{Up, Left, Down, Right} {
+		x2, y2 := nextLoc(x, y, d)
+		cell := &env.Cell[x2][y2]
+		nearby := &input.Nearby[i]
 		nearby.MoreFood = env.Cell[x][y].Food < cell.Food
 		if cell.Animat == nil {
 			continue
@@ -50,7 +47,6 @@ func (a *Animat) Observe(x, y int, env *Environment) *BrainInput {
 		nearby.MoreHealth = a.Health < cell.Animat.Health
 		nearby.OtherFace = cell.Animat.Face
 		nearby.OtherTargetFace = cell.Animat.TargetFace
-		input.Nearby[i] = nearby
 	}
 	return input
 }
@@ -60,22 +56,7 @@ func (a *Animat) Eat(x, y int, env *Environment) {
 }
 
 func relLoc(x, y, rx, ry int) (int, int) {
-	x += rx
-	y += ry
-	if x < 0 {
-		x = 0
-	}
-	if x >= EnvSize {
-		x = EnvSize - 1
-	}
-	if y < 0 {
-		y = 0
-	}
-	if y >= EnvSize {
-		y = EnvSize - 1
-	}
-	return x, y
-	//return (x + rx + EnvSize) % EnvSize, (y + ry + EnvSize) % EnvSize
+	return (x + rx + EnvSize) % EnvSize, (y + ry + EnvSize) % EnvSize
 }
 
 // calculate the coordinate of the cell in front of a given cell and direction.
@@ -116,14 +97,16 @@ func (a *Animat) Attack(x, y int, env *Environment) {
 
 func (a *Animat) Move(move Move, x, y int, env *Environment) {
 	switch move {
-	case Stay:
-	case TurnLeft:
-		a.Health -= TurnCost
-		a.Direction = (a.Direction + 1) % 4
-	case TurnRight:
-		a.Health -= TurnCost
-		a.Direction = (a.Direction + 3) % 4
-	case Forward:
+	case MoveUp:
+		a.Direction = Up
+	case MoveLeft:
+		a.Direction = Left
+	case MoveDown:
+		a.Direction = Down
+	case MoveRight:
+		a.Direction = Right
+	}
+	if move != Stay {
 		a.Health -= MoveCost
 		x2, y2 := nextLoc(x, y, a.Direction)
 		if env.Cell[x2][y2].Animat != nil { // cannot move forward if front cell is blocked.

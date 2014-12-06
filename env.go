@@ -7,7 +7,8 @@ import (
 	"image/gif"
 	"io"
 	"math/rand"
-	"os"
+
+	"github.com/r9y9/nnet/rbm"
 )
 
 type EnvCell struct {
@@ -42,7 +43,7 @@ func NewEnvironment() *Environment {
 	for i := -4; i <= 4; i++ {
 		for j := -4; j <= 4; j++ {
 			for k := 0; k <= 4; k++ {
-				if i*i+j*j < k*k {
+				if i*i+j*j <= k*k {
 					env.relCell(cx, cy, i, j).Food = uint8(4 - k)
 					break
 				}
@@ -51,22 +52,19 @@ func NewEnvironment() *Environment {
 	}
 
 	for i := uint8(0); i < InitAnimatNum; i++ {
+		brain := NewRBMBrain2()
+		if r, err := rbm.Load(*brainData); err == nil {
+			brain.RBM = r
+		}
 		x := rand.Intn(EnvSize)
 		y := rand.Intn(EnvSize)
 		a := &Animat{
-			Brain:     NewRBMBrain(),
-			Face:      Face(i % 8),
-			Direction: Direction(i % 4),
+			Brain: brain,
+			Face:  Face(i % 8),
 		}
 		env.Cell[x][y].Animat = a
 		env.Reputation[a] = make(map[Face]float64)
 		env.Score[a] = make([]float64, 2*TrainScope)
-		f, err := os.Open(*brainData)
-		if err != nil {
-			continue
-		}
-		a.Brain.(*RBMBrain).Decode(f)
-		f.Close()
 	}
 
 	env.record.Image = make([]*image.Paletted, RecordIteration)
@@ -78,49 +76,31 @@ func NewEnvironment() *Environment {
 }
 
 var (
-	GrassColor1 = color.RGBA{30, 60, 30, 255}
-	GrassColor2 = color.RGBA{60, 120, 60, 255}
-	GrassColor3 = color.RGBA{90, 180, 90, 255}
-	GrassColor4 = color.RGBA{120, 240, 120, 255}
-	GrassColor5 = color.RGBA{240, 240, 120, 255}
-	BackGroundColor = color.RGBA{255, 255, 255, 255}
-	AnimatColor = color.RGBA{255, 0, 0, 255}
-	GridColor   = color.RGBA{0, 0, 0, 255}
-	NormalColor = color.RGBA{0, 255, 0, 255}
+	backgroundColor = color.RGBA{255, 255, 255, 255}
+	gridColor       = color.RGBA{0, 0, 0, 255}
+	grassColor1     = color.RGBA{30, 60, 30, 255}
+	grassColor2     = color.RGBA{60, 120, 60, 255}
+	grassColor3     = color.RGBA{90, 180, 90, 255}
+	grassColor4     = color.RGBA{120, 240, 120, 255}
+	grassColor5     = color.RGBA{240, 240, 120, 255}
+	attackColor     = color.RGBA{255, 0, 0, 255}
+	normalColor     = color.RGBA{0, 255, 0, 255}
 )
-
-func faceColor(f Face) color.Color {
-	return AnimatColor
-}
-
-func headColor(tf Face) color.Color {
-	if tf == 0 {
-		return NormalColor
-	}
-	return AnimatColor
-}
-
-func bodyColor(hp int) color.Color {
-	if hp > 0 {
-		return NormalColor
-	}
-	return AnimatColor
-}
 
 func grassColor(grass uint8) color.Color {
 	if grass > 3 {
-		return GrassColor1
+		return grassColor1
 	}
 	if grass > 2 {
-		return GrassColor2
+		return grassColor2
 	}
 	if grass > 1 {
-		return GrassColor3
+		return grassColor3
 	}
 	if grass > 0 {
-		return GrassColor4
+		return grassColor4
 	}
-	return GrassColor5
+	return grassColor5
 }
 
 func (env *Environment) Run(iter int) {
@@ -136,16 +116,6 @@ func (env *Environment) Run(iter int) {
 			if cell.Animat == nil {
 				continue
 			}
-			//if cell.Animat.Health == 0 { // no health die
-			//f, err := os.Create(*brainData)
-			//if err != nil {
-			//	continue
-			//}
-			//cell.Animat.Brain.(*RBMBrain).Encode(f)
-			//f.Close()
-			//	env.Cell[i][j].Animat = nil
-			//	continue
-			//}
 			list = append(list, &Location{
 				Animat: cell.Animat,
 				X:      i,
@@ -156,22 +126,10 @@ func (env *Environment) Run(iter int) {
 	for _, r := range rand.Perm(len(list)) {
 		l := list[r]
 		a := l.Animat
-		// train
-		if Iteration-iter <= RecordIteration {
-			fmt.Printf("animat %d score: %f; ",a.Face,env.Score[a][0])
-		}
-		a.Brain.Reward(env.Score[a][0])
-
-		// observe, think, and do something
-		a.Do(l.X, l.Y, env)
 		fitness := float64(a.Health)
 		//for f := range env.Reputation[a] {
 		//	fitness += env.Reputation[a][f]
 		//}
-
-		if Iteration-iter <= RecordIteration {
-			fmt.Printf("health: %f\n", fitness)
-		}
 
 		env.Score[a] = append(env.Score[a][1:], 0)
 		for k := 0; k < TrainScope; k++ {
@@ -180,73 +138,105 @@ func (env *Environment) Run(iter int) {
 		for k := TrainScope; k < 2*TrainScope; k++ {
 			env.Score[a][k] -= fitness
 		}
+
+		// observe, think, and do something
+		a.Do(l.X, l.Y, env)
+
+		// train
+		fmt.Printf("animat %d: %f\n", a.Face, env.Score[a][0])
+		a.Brain.Reward(env.Score[a][0])
 	}
-	if Iteration-iter <= RecordIteration {
-		env.drawFrame(Iteration - iter - 1)
+	if Iteration-RecordIteration <= iter {
+		env.drawFrame(iter - Iteration + RecordIteration)
 	}
 }
 
 func (env *Environment) drawFrame(iter int) {
-	img := image.NewPaletted(image.Rect(0, 0, 31*EnvSize-1, 31*EnvSize-1), []color.Color{ BackGroundColor, AnimatColor, GridColor, NormalColor,
-		//GrassColor1,
-		//GrassColor2,
-		//GrassColor3,
-		//GrassColor4,
-		//GrassColor5,
-		//AnimatColor,
+	img := image.NewPaletted(image.Rect(0, 0, (CellPixel+1)*EnvSize-1, (CellPixel+1)*EnvSize-1), []color.Color{
+		backgroundColor,
+		gridColor,
+		grassColor1,
+		grassColor2,
+		grassColor3,
+		grassColor4,
+		grassColor5,
+		attackColor,
+		normalColor,
 	})
+
 	for i := 1; i < EnvSize; i++ {
-		for j := 0; j < 31*EnvSize-1; j++ {
-			img.Set(31*i, j, GridColor)
-			img.Set(j, 31*i, GridColor)
+		for j := 0; j < (CellPixel+1)*EnvSize-1; j++ {
+			img.Set((CellPixel+1)*i, j, gridColor)
+			img.Set(j, (CellPixel+1)*i, gridColor)
 		}
 	}
 	for i := 0; i < EnvSize; i++ {
 		for j := 0; j < EnvSize; j++ {
 			cell := &env.Cell[i][j]
+
+			for ii := i*(CellPixel+1) + 1; ii < (i+1)*(CellPixel+1); ii++ {
+				for jj := j*(CellPixel+1) + 1; jj < (j+1)*(CellPixel+1); jj++ {
+					img.Set(ii, jj, grassColor(cell.Food))
+				}
+			}
+
 			if cell.Animat == nil {
 				continue
-				//img.Set(i, j, grassColor(cell.Food))
 			}
-			//else {
-			//	img.Set(i, j, faceColor(cell.Animat.Face))
-			//}
+			a1 := i*(CellPixel+1) + MarginPixel + 1
+			a2 := (i+1)*(CellPixel+1) - MarginPixel
+			b1 := j*(CellPixel+1) + MarginPixel + 1
+			b2 := (j+1)*(CellPixel+1) - MarginPixel
+			for ii := a1; ii < a2; ii++ {
+				for jj := b1; jj < b2; jj++ {
+					if ii == a1 || ii == a2-1 ||
+						jj == b1 || jj == b2-1 {
+						img.Set(ii, jj, gridColor)
+					} else {
+						img.Set(ii, jj, backgroundColor)
+					}
+				}
+			}
 			a := cell.Animat
 			switch a.Direction {
-			case Down:
-				for ii := 31*i+10; ii < 31*i+20; ii++ {
-					for jj := 31*j; jj < 31*j+10; jj++ {
-						img.Set(ii,jj,headColor(a.TargetFace))
-					}
-					for jj := 31*j+10; jj < 31*j+20; jj++ {
-						img.Set(ii,jj,bodyColor(a.Health))
-					}
-				}
-			case Right:
-				for jj := 31*j+10; jj < 31*j+20; jj++ {
-					for ii := 31*i; ii < 31*i+10; ii++ {
-						img.Set(ii,jj,headColor(a.TargetFace))
-					}
-					for ii := 31*i+10; ii < 31*i+20; ii++ {
-						img.Set(ii,jj,bodyColor(a.Health))
-					} 
-				}
 			case Up:
-				for ii := 31*i+10; ii < 31*i+20; ii++ {
-					for jj := 31*j+10; jj < 31*j+20; jj++ {
-						img.Set(ii,jj,bodyColor(a.Health))
-					}
-					for jj := 31*j+20; jj < 31*j+30; jj++ {
-						img.Set(ii,jj,headColor(a.TargetFace))
+				for ii := a1 + 1; ii < a2-1; ii++ {
+					for jj := b1 + 1; jj < b1+1+HeadPixel; jj++ {
+						if a.TargetFace == 0 {
+							img.Set(ii, jj, normalColor)
+						} else {
+							img.Set(ii, jj, attackColor)
+						}
 					}
 				}
 			case Left:
-				for jj := 31*j+10; jj < 31*j+20; jj++ {
-					for ii := 31*i+10; ii < 31*i+20; ii++ {
-						img.Set(ii,jj,bodyColor(a.Health))
+				for ii := a1 + 1; ii < a1+1+HeadPixel; ii++ {
+					for jj := b1 + 1; jj < b2-1; jj++ {
+						if a.TargetFace == 0 {
+							img.Set(ii, jj, normalColor)
+						} else {
+							img.Set(ii, jj, attackColor)
+						}
 					}
-					for ii := 31*i+20; ii < 31*i+30; ii++ {
-						img.Set(ii,jj,headColor(a.TargetFace))
+				}
+			case Down:
+				for ii := a1 + 1; ii < a2-1; ii++ {
+					for jj := b2 - 2; jj > b2-2-HeadPixel; jj-- {
+						if a.TargetFace == 0 {
+							img.Set(ii, jj, normalColor)
+						} else {
+							img.Set(ii, jj, attackColor)
+						}
+					}
+				}
+			case Right:
+				for ii := a2 - 2; ii > a2-2-HeadPixel; ii-- {
+					for jj := b1 + 1; jj < b2-1; jj++ {
+						if a.TargetFace == 0 {
+							img.Set(ii, jj, normalColor)
+						} else {
+							img.Set(ii, jj, attackColor)
+						}
 					}
 				}
 			}

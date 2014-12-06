@@ -1,15 +1,18 @@
 package main
 
 const (
-	Iteration        = 10000
-	RecordIteration  = 2000
-	RecordDelay      = 5
+	Iteration        = 1000
+	RecordIteration  = 1000
+	RecordDelay      = 10
+	CellPixel        = 30
+	MarginPixel      = 4
+	HeadPixel        = 4
 	EnvSize          = 16
-	MoveCost         = 2
-	TurnCost         = 1
+	MoveCost         = 1
 	AttackDamage     = 3
 	ReputationFactor = 2
-	TrainScope       = 2
+	TrainScope       = 1
+	PreTrain         = 1000
 )
 
 const (

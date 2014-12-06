@@ -1,6 +1,9 @@
 package main
 
-import "github.com/taylorchu/rbm"
+import (
+	"fmt"
+	"math/rand"
+)
 
 //   | 0 |
 // 1 |   | 3
@@ -21,45 +24,42 @@ type BrainInput struct {
 }
 
 const (
-	InputSize  = 21 // 1 + 5 * 4
-	OutputSize = 3
+	InputSize  = 12 // 4 * 3
+	OutputSize = 4
 )
 
-func (bi *BrainInput) Encode(b []uint8) {
-	if bi.MyFace == bi.MyTargetFace {
-		b[0] = 1
-	}
+func (bi *BrainInput) Encode(b []float64) {
+	//if bi.MyFace == bi.MyTargetFace {
+	//	b[0] = 1
+	//}
 	for i := 0; i < 4; i++ {
-		off := 1 + 5*i
-		if bi.Nearby[i].OtherFace == bi.MyFace {
+		off := 3 * i
+		//if bi.Nearby[i].OtherFace == bi.MyFace {
+		//	b[off] = 1
+		//}
+		//if bi.Nearby[i].OtherTargetFace == bi.MyFace {
+		//	b[off+1] = 1
+		//}
+		if bi.Nearby[i].MoreHealth {
 			b[off] = 1
 		}
-		if bi.Nearby[i].OtherTargetFace == bi.MyFace {
+		if bi.Nearby[i].MoreFood {
 			b[off+1] = 1
 		}
-		if bi.Nearby[i].MoreHealth {
+		if bi.Nearby[i].HasAnimat {
 			b[off+2] = 1
 		}
-		if bi.Nearby[i].MoreFood {
-			b[off+3] = 1
-		}
-		if bi.Nearby[i].HasAnimat {
-			b[off+4] = 1
-		}
 	}
-}
-
-func encodeFace(f Face) (uint8, uint8, uint8) {
-	return uint8(f) & 7 >> 2, uint8(f) & 3 >> 1, uint8(f) & 1
 }
 
 type Move uint8
 
 const (
-	Stay Move = iota
-	TurnLeft
-	TurnRight
-	Forward
+	MoveUp Move = iota
+	MoveLeft
+	MoveDown
+	MoveRight
+	Stay
 )
 
 type BrainOutput struct {
@@ -67,43 +67,87 @@ type BrainOutput struct {
 	Move   Move
 }
 
+func (bo *BrainOutput) Decode(b []float64) {
+	bo.Attack = b[0] == 1
+	if b[1] == 1 {
+		bo.Move |= 4
+	}
+	if b[2] == 1 {
+		bo.Move |= 2
+	}
+	if b[3] == 1 {
+		bo.Move |= 1
+	}
+}
+
+func (bo *BrainOutput) Encode(b []float64) {
+	if bo.Attack {
+		b[0] = 1
+	}
+	if bo.Move&4 != 0 {
+		b[1] = 1
+	}
+	if bo.Move&2 != 0 {
+		b[2] = 1
+	}
+	if bo.Move&1 != 0 {
+		b[3] = 1
+	}
+}
+
 type Brain interface {
 	React(*BrainInput) *BrainOutput
 	Reward(score float64)
 }
 
-type RBMBrain struct {
-	*rbm.RBM
-	Mem [][]uint8
+func expected(input *BrainInput) (output *BrainOutput) {
+	output = new(BrainOutput)
+	output.Move = Stay
+	for i := 0; i < 4; i++ {
+		if input.Nearby[i].MoreFood {
+			output.Move = Move(i)
+			return
+		}
+	}
+
+	//for i := 0; i < 4; i++ {
+	//	if input.Nearby[i].HasAnimat && !input.Nearby[i].MoreHealth && !input.Nearby[i].MoreFood {
+	//		output.Move = Move((i + 2) % 4)
+	//		return
+	//	}
+
+	//}
+	//for i := 0; i < 4; i++ {
+	//	if input.Nearby[i].HasAnimat && input.Nearby[i].MoreHealth && input.Nearby[i].MoreFood {
+	//		output.Move = Move(i)
+	//		output.Attack = true
+	//		return
+	//	}
+	//}
+	return
 }
 
-func NewRBMBrain() *RBMBrain {
-	return &RBMBrain{
-		RBM: rbm.New(InputSize + OutputSize),
-		Mem: make([][]uint8, TrainScope*2),
+func createTrainingData() [][]float64 {
+	data := make([][]float64, PreTrain)
+	for i := 0; i < PreTrain; i++ {
+		input := new(BrainInput)
+		input.MyFace = Face(rand.Intn(8))
+		input.MyTargetFace = Face(rand.Intn(8))
+		for i := 0; i < 4; i++ {
+			nearby := &input.Nearby[i]
+			nearby.MoreFood = rand.Intn(2) == 1
+			if rand.Intn(2) == 1 {
+				nearby.HasAnimat = true
+				nearby.MoreHealth = rand.Intn(2) == 1
+				nearby.OtherFace = Face(rand.Intn(8))
+				nearby.OtherTargetFace = Face(rand.Intn(8))
+			}
+		}
+		output := expected(input)
+		data[i] = make([]float64, InputSize+OutputSize)
+		input.Encode(data[i])
+		output.Encode(data[i][InputSize:])
+		fmt.Println(data[i])
 	}
-}
-
-func (b *RBMBrain) Reward(score float64) {
-	if score < 1 || len(b.Mem[0]) != InputSize+OutputSize {
-		return
-	}
-	b.Train(b.Mem[:1], 0.1, int(score))
-}
-
-func (b *RBMBrain) React(input *BrainInput) *BrainOutput {
-	raw := make([]uint8, InputSize+OutputSize)
-	input.Encode(raw)
-	rawOutput := b.Reconstruct(raw, 3)
-	b.Mem = append(b.Mem[1:], rawOutput)
-	output := new(BrainOutput)
-	output.Attack = rawOutput[len(rawOutput)-3] == 1
-
-	if rawOutput[len(rawOutput)-2] == 1 {
-		output.Move |= 2
-	}
-	if rawOutput[len(rawOutput)-1] == 1 {
-		output.Move |= 1
-	}
-	return output
+	return data
 }
