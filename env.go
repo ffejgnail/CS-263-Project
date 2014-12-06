@@ -72,7 +72,7 @@ func NewEnvironment() *Environment {
 	env.record.Image = make([]*image.Paletted, RecordIteration)
 	env.record.Delay = make([]int, RecordIteration)
 	for i := 0; i < RecordIteration; i++ {
-		env.record.Delay[i] = 5
+		env.record.Delay[i] = RecordDelay
 	}
 	return env
 }
@@ -83,10 +83,27 @@ var (
 	GrassColor3 = color.RGBA{90, 180, 90, 255}
 	GrassColor4 = color.RGBA{120, 240, 120, 255}
 	GrassColor5 = color.RGBA{240, 240, 120, 255}
+	BackGroundColor = color.RGBA{255, 255, 255, 255}
 	AnimatColor = color.RGBA{255, 0, 0, 255}
+	GridColor   = color.RGBA{0, 0, 0, 255}
+	NormalColor = color.RGBA{0, 255, 0, 255}
 )
 
 func faceColor(f Face) color.Color {
+	return AnimatColor
+}
+
+func headColor(tf Face) color.Color {
+	if tf == 0 {
+		return NormalColor
+	}
+	return AnimatColor
+}
+
+func bodyColor(hp int) color.Color {
+	if hp > 0 {
+		return NormalColor
+	}
 	return AnimatColor
 }
 
@@ -170,21 +187,68 @@ func (env *Environment) Run(iter int) {
 }
 
 func (env *Environment) drawFrame(iter int) {
-	img := image.NewPaletted(image.Rect(0, 0, EnvSize, EnvSize), []color.Color{
-		GrassColor1,
-		GrassColor2,
-		GrassColor3,
-		GrassColor4,
-		GrassColor5,
-		AnimatColor,
+	img := image.NewPaletted(image.Rect(0, 0, 31*EnvSize-1, 31*EnvSize-1), []color.Color{ BackGroundColor, AnimatColor, GridColor, NormalColor,
+		//GrassColor1,
+		//GrassColor2,
+		//GrassColor3,
+		//GrassColor4,
+		//GrassColor5,
+		//AnimatColor,
 	})
+	for i := 1; i < EnvSize; i++ {
+		for j := 0; j < 31*EnvSize-1; j++ {
+			img.Set(31*i, j, GridColor)
+			img.Set(j, 31*i, GridColor)
+		}
+	}
 	for i := 0; i < EnvSize; i++ {
 		for j := 0; j < EnvSize; j++ {
 			cell := &env.Cell[i][j]
 			if cell.Animat == nil {
-				img.Set(i, j, grassColor(cell.Food))
-			} else {
-				img.Set(i, j, faceColor(cell.Animat.Face))
+				continue
+				//img.Set(i, j, grassColor(cell.Food))
+			}
+			//else {
+			//	img.Set(i, j, faceColor(cell.Animat.Face))
+			//}
+			a := cell.Animat
+			switch a.Direction {
+			case Down:
+				for ii := 31*i+10; ii < 31*i+20; ii++ {
+					for jj := 31*j; jj < 31*j+10; jj++ {
+						img.Set(ii,jj,headColor(a.TargetFace))
+					}
+					for jj := 31*j+10; jj < 31*j+20; jj++ {
+						img.Set(ii,jj,bodyColor(a.Health))
+					}
+				}
+			case Right:
+				for jj := 31*j+10; jj < 31*j+20; jj++ {
+					for ii := 31*i; ii < 31*i+10; ii++ {
+						img.Set(ii,jj,headColor(a.TargetFace))
+					}
+					for ii := 31*i+10; ii < 31*i+20; ii++ {
+						img.Set(ii,jj,bodyColor(a.Health))
+					} 
+				}
+			case Up:
+				for ii := 31*i+10; ii < 31*i+20; ii++ {
+					for jj := 31*j+10; jj < 31*j+20; jj++ {
+						img.Set(ii,jj,bodyColor(a.Health))
+					}
+					for jj := 31*j+20; jj < 31*j+30; jj++ {
+						img.Set(ii,jj,headColor(a.TargetFace))
+					}
+				}
+			case Left:
+				for jj := 31*j+10; jj < 31*j+20; jj++ {
+					for ii := 31*i+10; ii < 31*i+20; ii++ {
+						img.Set(ii,jj,bodyColor(a.Health))
+					}
+					for ii := 31*i+20; ii < 31*i+30; ii++ {
+						img.Set(ii,jj,headColor(a.TargetFace))
+					}
+				}
 			}
 		}
 	}
