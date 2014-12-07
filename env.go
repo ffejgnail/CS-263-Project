@@ -70,9 +70,9 @@ func NewEnvironment() *Environment {
 		env.Cell[x][y].Animat = a
 	}
 
-	env.record.Image = make([]*image.Paletted, RecordIteration)
-	env.record.Delay = make([]int, RecordIteration)
-	for i := 0; i < RecordIteration; i++ {
+	env.record.Image = make([]*image.Paletted, Iteration)
+	env.record.Delay = make([]int, Iteration)
+	for i := 0; i < Iteration; i++ {
 		env.record.Delay[i] = RecordDelay
 	}
 	return env
@@ -157,9 +157,7 @@ func (env *Environment) Run(iter int) {
 			env.Good[a] = nil
 		}
 	}
-	if Iteration-RecordIteration <= iter {
-		env.drawFrame(iter - Iteration + RecordIteration)
-	}
+	env.drawFrame(iter)
 }
 
 func (env *Environment) drawFrame(iter int) {

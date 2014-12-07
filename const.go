@@ -13,15 +13,14 @@ const (
 // training
 const (
 	TrainScope = 1
-	PreTrain   = 1000
+	PreTrain   = 2000
 	Reward     = 100
 )
 
 // draw
 const (
-	RecordIteration = 1000
-	RecordDelay     = 10
-	CellPixel       = 30
-	MarginPixel     = 4
-	HeadPixel       = 4
+	RecordDelay = 10
+	CellPixel   = 30
+	MarginPixel = 4
+	HeadPixel   = 4
 )
