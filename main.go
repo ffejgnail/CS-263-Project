@@ -15,7 +15,7 @@ var (
 func main() {
 	flag.Parse()
 	if *trainBrain {
-		brain := NewRBMBrain2()
+		brain := NewRBMBrain()
 
 		brain.Default()
 		brain.Dump(*brainData)

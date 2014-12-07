@@ -20,7 +20,7 @@ type Animat struct {
 }
 
 func (a *Animat) Do(x, y int, env *Environment) {
-	output := a.Brain.React(a.Observe(x, y, env))
+	output, _ := a.Brain.React(a.Observe(x, y, env))
 
 	a.Move(output.Move, x, y, env)
 	a.Eat(x, y, env)

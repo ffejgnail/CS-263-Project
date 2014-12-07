@@ -96,8 +96,10 @@ func (bo *BrainOutput) Encode(b []float64) {
 }
 
 type Brain interface {
-	React(*BrainInput) *BrainOutput
-	Reward(score float64)
+	React(*BrainInput) (*BrainOutput, []float64)
+	Reward(data [][]float64, score float64)
+	Dump(filename string) error
+	Load(filename string) error
 }
 
 func expected(input *BrainInput) (output *BrainOutput) {
@@ -109,21 +111,6 @@ func expected(input *BrainInput) (output *BrainOutput) {
 			return
 		}
 	}
-
-	//for i := 0; i < 4; i++ {
-	//	if input.Nearby[i].HasAnimat && !input.Nearby[i].MoreHealth && !input.Nearby[i].MoreFood {
-	//		output.Move = Move((i + 2) % 4)
-	//		return
-	//	}
-
-	//}
-	//for i := 0; i < 4; i++ {
-	//	if input.Nearby[i].HasAnimat && input.Nearby[i].MoreHealth && input.Nearby[i].MoreFood {
-	//		output.Move = Move(i)
-	//		output.Attack = true
-	//		return
-	//	}
-	//}
 	return
 }
 

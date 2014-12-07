@@ -1,8 +1,8 @@
 package main
 
 const (
-	Iteration        = 1000
-	RecordIteration  = 1000
+	Iteration        = 500
+	RecordIteration  = 500
 	RecordDelay      = 10
 	CellPixel        = 30
 	MarginPixel      = 4

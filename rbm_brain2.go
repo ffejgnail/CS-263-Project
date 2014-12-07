@@ -1,26 +1,19 @@
 package main
 
-import (
-	"math/rand"
-
-	"github.com/r9y9/nnet/rbm"
-)
+import "github.com/r9y9/nnet/rbm"
 
 type RBMBrain2 struct {
 	*rbm.RBM
-	Mem [][]float64
 }
 
 func NewRBMBrain2() *RBMBrain2 {
 	return &RBMBrain2{
-		RBM: rbm.New(InputSize+OutputSize, 10),
-		Mem: make([][]float64, TrainScope*2),
+		RBM: rbm.New(InputSize+OutputSize, (InputSize+OutputSize)/2),
 	}
 }
 
-func (b *RBMBrain2) Reward(score float64) {
-	return
-	if score < 1 || len(b.Mem[0]) != InputSize+OutputSize {
+func (b *RBMBrain2) Reward(data [][]float64, score float64) {
+	if score < 1 {
 		return
 	}
 	option := rbm.TrainingOption{
@@ -32,20 +25,19 @@ func (b *RBMBrain2) Reward(score float64) {
 		RegularizationRate:   1.0e-10,
 		Monitoring:           false,
 	}
-	b.Train(b.Mem[:1], option)
+	b.Train(data, option)
 }
 
-func (b *RBMBrain2) React(input *BrainInput) *BrainOutput {
+func (b *RBMBrain2) React(input *BrainInput) (*BrainOutput, []float64) {
 	raw := make([]float64, InputSize+OutputSize)
 	input.Encode(raw)
 	for i := 0; i < OutputSize; i++ {
-		raw[InputSize+i] = rand.Float64()
+		raw[InputSize+i] = 0.5
 	}
 	rawOutput, _ := b.Reconstruct(raw, 10)
-	b.Mem = append(b.Mem[1:], rawOutput)
 	output := new(BrainOutput)
 	output.Decode(rawOutput[InputSize:])
-	return output
+	return output, rawOutput
 }
 
 func (b *RBMBrain2) Default() {
@@ -59,4 +51,13 @@ func (b *RBMBrain2) Default() {
 		Monitoring:           false,
 	}
 	b.Train(createTrainingData(), option)
+}
+
+func (b *RBMBrain2) Load(filename string) (err error) {
+	r, err := rbm.Load(filename)
+	if err != nil {
+		return
+	}
+	b.RBM = r
+	return
 }

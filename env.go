@@ -1,14 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/gif"
 	"io"
 	"math/rand"
-
-	"github.com/r9y9/nnet/rbm"
 )
 
 type EnvCell struct {
@@ -19,7 +16,6 @@ type EnvCell struct {
 type Environment struct {
 	Cell       [EnvSize][EnvSize]EnvCell
 	Reputation map[*Animat]map[Face]float64
-	Score      map[*Animat][]float64
 
 	record gif.GIF
 }
@@ -36,7 +32,6 @@ func (env *Environment) relCell(x, y, rx, ry int) *EnvCell {
 func NewEnvironment() *Environment {
 	env := new(Environment)
 	env.Reputation = make(map[*Animat]map[Face]float64)
-	env.Score = make(map[*Animat][]float64)
 
 	cx := EnvSize / 2
 	cy := EnvSize / 2
@@ -52,19 +47,23 @@ func NewEnvironment() *Environment {
 	}
 
 	for i := uint8(0); i < InitAnimatNum; i++ {
-		brain := NewRBMBrain2()
-		if r, err := rbm.Load(*brainData); err == nil {
-			brain.RBM = r
-		}
-		x := rand.Intn(EnvSize)
-		y := rand.Intn(EnvSize)
+		brain := NewRBMBrain()
+		brain.Load(*brainData)
 		a := &Animat{
 			Brain: brain,
 			Face:  Face(i % 8),
 		}
-		env.Cell[x][y].Animat = a
 		env.Reputation[a] = make(map[Face]float64)
-		env.Score[a] = make([]float64, 2*TrainScope)
+		// no position collision
+		var x, y int
+		for {
+			x = rand.Intn(EnvSize)
+			y = rand.Intn(EnvSize)
+			if env.Cell[x][y].Animat == nil {
+				break
+			}
+		}
+		env.Cell[x][y].Animat = a
 	}
 
 	env.record.Image = make([]*image.Paletted, RecordIteration)
@@ -126,25 +125,11 @@ func (env *Environment) Run(iter int) {
 	for _, r := range rand.Perm(len(list)) {
 		l := list[r]
 		a := l.Animat
-		fitness := float64(a.Health)
-		//for f := range env.Reputation[a] {
-		//	fitness += env.Reputation[a][f]
-		//}
-
-		env.Score[a] = append(env.Score[a][1:], 0)
-		for k := 0; k < TrainScope; k++ {
-			env.Score[a][k] += fitness
-		}
-		for k := TrainScope; k < 2*TrainScope; k++ {
-			env.Score[a][k] -= fitness
-		}
 
 		// observe, think, and do something
 		a.Do(l.X, l.Y, env)
 
 		// train
-		fmt.Printf("animat %d: %f\n", a.Face, env.Score[a][0])
-		a.Brain.Reward(env.Score[a][0])
 	}
 	if Iteration-RecordIteration <= iter {
 		env.drawFrame(iter - Iteration + RecordIteration)
