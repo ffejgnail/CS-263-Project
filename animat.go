@@ -1,5 +1,7 @@
 package main
 
+import "math/rand"
+
 type Direction uint8
 
 const (
@@ -9,22 +11,20 @@ const (
 	Right
 )
 
-type Face uint8 // 0-7
+type Color uint8
 
 type Animat struct {
-	Health     int
-	Face       Face
-	TargetFace Face
-	Brain      Brain
-	Direction  Direction
+	Health      int
+	Color       Color
+	TargetColor Color
+	Brain       Brain
+	Direction   Direction
 }
 
-func (a *Animat) Do(x, y int, env *Environment) {
-	output, _ := a.Brain.React(a.Observe(x, y, env))
-
+func (a *Animat) Do(output *BrainOutput, x, y int, env *Environment) {
 	a.Move(output.Move, x, y, env)
 	a.Eat(x, y, env)
-	a.TargetFace = 0
+	a.TargetColor = 0
 	if output.Attack {
 		a.Attack(x, y, env)
 	}
@@ -32,8 +32,8 @@ func (a *Animat) Do(x, y int, env *Environment) {
 
 func (a *Animat) Observe(x, y int, env *Environment) *BrainInput {
 	input := new(BrainInput)
-	input.MyFace = a.Face
-	input.MyTargetFace = a.TargetFace
+	input.Color = a.Color
+	input.TargetColor = a.TargetColor
 
 	for i, d := range []Direction{Up, Left, Down, Right} {
 		x2, y2 := nextLoc(x, y, d)
@@ -45,8 +45,9 @@ func (a *Animat) Observe(x, y int, env *Environment) *BrainInput {
 		}
 		nearby.HasAnimat = true
 		nearby.MoreHealth = a.Health < cell.Animat.Health
-		nearby.OtherFace = cell.Animat.Face
-		nearby.OtherTargetFace = cell.Animat.TargetFace
+		nearby.Color = cell.Animat.Color
+		nearby.TargetColor = cell.Animat.TargetColor
+		nearby.Nice = env.Relation[a][nearby.Color] > 0
 	}
 	return input
 }
@@ -60,7 +61,6 @@ func relLoc(x, y, rx, ry int) (int, int) {
 }
 
 // calculate the coordinate of the cell in front of a given cell and direction.
-// the world is wrapped around.
 func nextLoc(x, y int, dir Direction) (int, int) {
 	switch dir {
 	case Up:
@@ -83,19 +83,22 @@ func (a *Animat) Attack(x, y int, env *Environment) {
 	if target == nil {
 		return
 	}
-	a.TargetFace = target.Face
+	a.TargetColor = target.Color
 	target.Health -= AttackDamage
 
-	env.Reputation[target][a.Face] -= 1.0
-	for other := range env.Reputation {
+	env.Relation[target][a.Color] -= 1.0
+	for other := range env.Relation {
 		if other == target {
 			continue
 		}
-		env.Reputation[other][a.Face] -= env.Reputation[other][target.Face] / ReputationFactor
+		env.Relation[other][a.Color] -= env.Relation[other][target.Color] / RelationFactor
 	}
 }
 
 func (a *Animat) Move(move Move, x, y int, env *Environment) {
+	if move == MoveRand {
+		move = Move(rand.Intn(4))
+	}
 	switch move {
 	case MoveUp:
 		a.Direction = Up

@@ -12,13 +12,10 @@ func NewRBMBrain2() *RBMBrain2 {
 	}
 }
 
-func (b *RBMBrain2) Reward(data [][]float64, score float64) {
-	if score < 1 {
-		return
-	}
+func (b *RBMBrain2) Reward(data [][]float64, score int) {
 	option := rbm.TrainingOption{
 		LearningRate:         0.1,
-		Epoches:              int(score),
+		Epoches:              score,
 		OrderOfGibbsSampling: 1,
 		MiniBatchSize:        20,
 		L2Regularization:     true,

@@ -12,11 +12,8 @@ func NewRBMBrain() *RBMBrain {
 	}
 }
 
-func (b *RBMBrain) Reward(data [][]float64, score float64) {
-	if score < 1 {
-		return
-	}
-	b.Train(data, 0.1, int(score))
+func (b *RBMBrain) Reward(data [][]float64, score int) {
+	b.Train(data, score)
 }
 
 func (b *RBMBrain) React(input *BrainInput) (*BrainOutput, []float64) {
@@ -29,7 +26,7 @@ func (b *RBMBrain) React(input *BrainInput) (*BrainOutput, []float64) {
 }
 
 func (b *RBMBrain) Default() {
-	b.Train(createTrainingData(), 0.1, 1000)
+	b.Train(createTrainingData(), 1000)
 }
 
 func (b *RBMBrain) Dump(filename string) (err error) {

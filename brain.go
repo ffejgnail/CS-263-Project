@@ -10,44 +10,48 @@ import (
 //   | 2 |
 
 type Nearby struct {
-	HasAnimat       bool
-	OtherFace       Face
-	OtherTargetFace Face
-	MoreHealth      bool
-	MoreFood        bool
+	HasAnimat   bool
+	Color       Color
+	TargetColor Color
+	MoreHealth  bool
+	MoreFood    bool
+	Nice        bool
 }
 
 type BrainInput struct {
-	MyFace       Face
-	MyTargetFace Face
-	Nearby       [4]Nearby
+	Color       Color
+	TargetColor Color
+	Nearby      [4]Nearby
 }
 
 const (
-	InputSize  = 12 // 4 * 3
+	InputSize  = 25 // 1 + 4 * 6
 	OutputSize = 4
 )
 
 func (bi *BrainInput) Encode(b []float64) {
-	//if bi.MyFace == bi.MyTargetFace {
-	//	b[0] = 1
-	//}
+	if bi.Color == bi.TargetColor {
+		b[0] = 1
+	}
 	for i := 0; i < 4; i++ {
-		off := 3 * i
-		//if bi.Nearby[i].OtherFace == bi.MyFace {
-		//	b[off] = 1
-		//}
-		//if bi.Nearby[i].OtherTargetFace == bi.MyFace {
-		//	b[off+1] = 1
-		//}
-		if bi.Nearby[i].MoreHealth {
+		off := 1 + 6*i
+		if bi.Nearby[i].MoreFood {
 			b[off] = 1
 		}
-		if bi.Nearby[i].MoreFood {
-			b[off+1] = 1
-		}
 		if bi.Nearby[i].HasAnimat {
-			b[off+2] = 1
+			b[off+1] = 1
+			if bi.Nearby[i].Color == bi.Color {
+				b[off+2] = 1
+			}
+			if bi.Nearby[i].TargetColor == bi.Color {
+				b[off+3] = 1
+			}
+			if bi.Nearby[i].MoreHealth {
+				b[off+4] = 1
+			}
+			if bi.Nearby[i].Nice {
+				b[off+5] = 1
+			}
 		}
 	}
 }
@@ -60,6 +64,7 @@ const (
 	MoveDown
 	MoveRight
 	Stay
+	MoveRand
 )
 
 type BrainOutput struct {
@@ -97,17 +102,21 @@ func (bo *BrainOutput) Encode(b []float64) {
 
 type Brain interface {
 	React(*BrainInput) (*BrainOutput, []float64)
-	Reward(data [][]float64, score float64)
+	Reward(data [][]float64, score int)
 	Dump(filename string) error
 	Load(filename string) error
 }
 
 func expected(input *BrainInput) (output *BrainOutput) {
 	output = new(BrainOutput)
-	output.Move = Stay
+	output.Move = MoveRand
 	for i := 0; i < 4; i++ {
-		if input.Nearby[i].MoreFood {
+		nearby := &input.Nearby[i]
+		if nearby.MoreFood {
 			output.Move = Move(i)
+			if nearby.HasAnimat && (nearby.Color != input.Color || !nearby.Nice) {
+				output.Attack = true
+			}
 			return
 		}
 	}
@@ -118,16 +127,17 @@ func createTrainingData() [][]float64 {
 	data := make([][]float64, PreTrain)
 	for i := 0; i < PreTrain; i++ {
 		input := new(BrainInput)
-		input.MyFace = Face(rand.Intn(8))
-		input.MyTargetFace = Face(rand.Intn(8))
+		input.Color = Color(rand.Intn(3) + 1)
+		input.TargetColor = Color(rand.Intn(3) + 1)
 		for i := 0; i < 4; i++ {
 			nearby := &input.Nearby[i]
 			nearby.MoreFood = rand.Intn(2) == 1
 			if rand.Intn(2) == 1 {
 				nearby.HasAnimat = true
 				nearby.MoreHealth = rand.Intn(2) == 1
-				nearby.OtherFace = Face(rand.Intn(8))
-				nearby.OtherTargetFace = Face(rand.Intn(8))
+				nearby.Color = Color(rand.Intn(3) + 1)
+				nearby.TargetColor = Color(rand.Intn(3) + 1)
+				nearby.Nice = rand.Intn(2) == 1
 			}
 		}
 		output := expected(input)

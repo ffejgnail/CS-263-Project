@@ -1,26 +1,29 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/gif"
 	"io"
 	"math/rand"
+
+	"github.com/taylorchu/rbm"
 )
 
 type EnvCell struct {
-	Food   uint8 // 0, 1, 2, 3, 4
+	Food   uint8
 	Animat *Animat
 }
 
 type Environment struct {
-	Cell       [EnvSize][EnvSize]EnvCell
-	Reputation map[*Animat]map[Face]float64
-
-	record gif.GIF
+	Cell     [EnvSize][EnvSize]EnvCell
+	Relation map[*Animat]map[Color]float64
+	Good     map[*Animat][][]float64
+	record   gif.GIF
 }
 
-func (env *Environment) WriteTo(w io.Writer) error { // generating GIF
+func (env *Environment) WriteTo(w io.Writer) error {
 	return gif.EncodeAll(w, &env.record)
 }
 
@@ -31,7 +34,8 @@ func (env *Environment) relCell(x, y, rx, ry int) *EnvCell {
 
 func NewEnvironment() *Environment {
 	env := new(Environment)
-	env.Reputation = make(map[*Animat]map[Face]float64)
+	env.Relation = make(map[*Animat]map[Color]float64)
+	env.Good = make(map[*Animat][][]float64)
 
 	cx := EnvSize / 2
 	cy := EnvSize / 2
@@ -51,9 +55,9 @@ func NewEnvironment() *Environment {
 		brain.Load(*brainData)
 		a := &Animat{
 			Brain: brain,
-			Face:  Face(i % 8),
+			Color: Color((i % 3) + 1),
 		}
-		env.Reputation[a] = make(map[Face]float64)
+		env.Relation[a] = make(map[Color]float64)
 		// no position collision
 		var x, y int
 		for {
@@ -75,31 +79,43 @@ func NewEnvironment() *Environment {
 }
 
 var (
-	backgroundColor = color.RGBA{255, 255, 255, 255}
-	gridColor       = color.RGBA{0, 0, 0, 255}
-	grassColor1     = color.RGBA{30, 60, 30, 255}
-	grassColor2     = color.RGBA{60, 120, 60, 255}
-	grassColor3     = color.RGBA{90, 180, 90, 255}
-	grassColor4     = color.RGBA{120, 240, 120, 255}
-	grassColor5     = color.RGBA{240, 240, 120, 255}
-	attackColor     = color.RGBA{255, 0, 0, 255}
-	normalColor     = color.RGBA{0, 255, 0, 255}
+	bgColor1    = color.RGBA{0, 0, 0, 255}
+	bgColor2    = color.RGBA{255, 255, 255, 255}
+	bgColor3    = color.RGBA{128, 128, 128, 255}
+	gridColor   = color.RGBA{0, 0, 0, 255}
+	grassColor1 = color.RGBA{30, 60, 30, 255}
+	grassColor2 = color.RGBA{60, 120, 60, 255}
+	grassColor3 = color.RGBA{90, 180, 90, 255}
+	grassColor4 = color.RGBA{120, 240, 120, 255}
+	grassColor5 = color.RGBA{240, 240, 120, 255}
+	attackColor = color.RGBA{255, 0, 0, 255}
+	normalColor = color.RGBA{0, 255, 0, 255}
 )
 
 func grassColor(grass uint8) color.Color {
-	if grass > 3 {
+	switch grass {
+	case 0:
+		return grassColor5
+	case 1:
+		return grassColor4
+	case 2:
+		return grassColor3
+	case 3:
+		return grassColor2
+	default:
 		return grassColor1
 	}
-	if grass > 2 {
-		return grassColor2
+}
+
+func skinColor(c Color) color.Color {
+	switch c {
+	case 1:
+		return bgColor1
+	case 2:
+		return bgColor2
+	default:
+		return bgColor3
 	}
-	if grass > 1 {
-		return grassColor3
-	}
-	if grass > 0 {
-		return grassColor4
-	}
-	return grassColor5
 }
 
 func (env *Environment) Run(iter int) {
@@ -127,9 +143,19 @@ func (env *Environment) Run(iter int) {
 		a := l.Animat
 
 		// observe, think, and do something
-		a.Do(l.X, l.Y, env)
+		input := a.Observe(l.X, l.Y, env)
+		output, raw := a.Brain.React(input)
+		a.Do(output, l.X, l.Y, env)
 
 		// train
+		if *output == *expected(input) {
+			fmt.Printf("animat %d\n", a.Color)
+			env.Good[a] = append(env.Good[a], raw)
+		}
+		if len(env.Good[a]) == rbm.BatchSize {
+			a.Brain.Reward(env.Good[a], Reward)
+			env.Good[a] = nil
+		}
 	}
 	if Iteration-RecordIteration <= iter {
 		env.drawFrame(iter - Iteration + RecordIteration)
@@ -138,7 +164,9 @@ func (env *Environment) Run(iter int) {
 
 func (env *Environment) drawFrame(iter int) {
 	img := image.NewPaletted(image.Rect(0, 0, (CellPixel+1)*EnvSize-1, (CellPixel+1)*EnvSize-1), []color.Color{
-		backgroundColor,
+		bgColor1,
+		bgColor2,
+		bgColor3,
 		gridColor,
 		grassColor1,
 		grassColor2,
@@ -168,6 +196,8 @@ func (env *Environment) drawFrame(iter int) {
 			if cell.Animat == nil {
 				continue
 			}
+			a := cell.Animat
+
 			a1 := i*(CellPixel+1) + MarginPixel + 1
 			a2 := (i+1)*(CellPixel+1) - MarginPixel
 			b1 := j*(CellPixel+1) + MarginPixel + 1
@@ -178,16 +208,15 @@ func (env *Environment) drawFrame(iter int) {
 						jj == b1 || jj == b2-1 {
 						img.Set(ii, jj, gridColor)
 					} else {
-						img.Set(ii, jj, backgroundColor)
+						img.Set(ii, jj, skinColor(a.Color))
 					}
 				}
 			}
-			a := cell.Animat
 			switch a.Direction {
 			case Up:
 				for ii := a1 + 1; ii < a2-1; ii++ {
 					for jj := b1 + 1; jj < b1+1+HeadPixel; jj++ {
-						if a.TargetFace == 0 {
+						if a.TargetColor == 0 {
 							img.Set(ii, jj, normalColor)
 						} else {
 							img.Set(ii, jj, attackColor)
@@ -197,7 +226,7 @@ func (env *Environment) drawFrame(iter int) {
 			case Left:
 				for ii := a1 + 1; ii < a1+1+HeadPixel; ii++ {
 					for jj := b1 + 1; jj < b2-1; jj++ {
-						if a.TargetFace == 0 {
+						if a.TargetColor == 0 {
 							img.Set(ii, jj, normalColor)
 						} else {
 							img.Set(ii, jj, attackColor)
@@ -207,7 +236,7 @@ func (env *Environment) drawFrame(iter int) {
 			case Down:
 				for ii := a1 + 1; ii < a2-1; ii++ {
 					for jj := b2 - 2; jj > b2-2-HeadPixel; jj-- {
-						if a.TargetFace == 0 {
+						if a.TargetColor == 0 {
 							img.Set(ii, jj, normalColor)
 						} else {
 							img.Set(ii, jj, attackColor)
@@ -217,7 +246,7 @@ func (env *Environment) drawFrame(iter int) {
 			case Right:
 				for ii := a2 - 2; ii > a2-2-HeadPixel; ii-- {
 					for jj := b1 + 1; jj < b2-1; jj++ {
-						if a.TargetFace == 0 {
+						if a.TargetColor == 0 {
 							img.Set(ii, jj, normalColor)
 						} else {
 							img.Set(ii, jj, attackColor)
