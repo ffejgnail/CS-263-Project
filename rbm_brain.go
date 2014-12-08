@@ -30,7 +30,7 @@ func (b *RBMBrain) Default() {
 }
 
 func (b *RBMBrain) Dump(filename string) (err error) {
-	return b.RBM.WriteFile(filename)
+	return b.WriteFile(filename)
 }
 
 func (b *RBMBrain) Load(filename string) (err error) {
