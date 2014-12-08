@@ -154,10 +154,12 @@ func (env *Environment) Run(iter int) {
 		a.Do(output, l.X, l.Y, env)
 
 		// train
-		if *output == *expected(input) {
-			fmt.Printf("animat %d\n", a.Color)
-			env.Good[a] = append(env.Good[a], raw)
+		if *output != *expected(input) {
+			continue
 		}
+		fmt.Printf("animat %d\n", a.Color)
+		env.Good[a] = append(env.Good[a], raw)
+
 		if len(env.Good[a]) == rbm.BatchSize {
 			a.Brain.Reward(env.Good[a], Reward)
 			env.Good[a] = nil
