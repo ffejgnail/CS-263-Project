@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 )
 
 var (
@@ -26,12 +25,6 @@ func main() {
 		fmt.Printf("[%d/%d]\n", i+1, Iteration)
 		env.Run(i)
 	}
-	f, err := os.Create(*export)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer f.Close()
-	env.WriteTo(f)
+	env.WriteFile(*export)
 	fmt.Println("exported to", *export)
 }

@@ -5,8 +5,8 @@ import (
 	"image"
 	"image/color"
 	"image/gif"
-	"io"
 	"math/rand"
+	"os"
 
 	"github.com/taylorchu/rbm"
 )
@@ -23,8 +23,14 @@ type Environment struct {
 	record   gif.GIF
 }
 
-func (env *Environment) WriteTo(w io.Writer) error {
-	return gif.EncodeAll(w, &env.record)
+func (env *Environment) WriteFile(filename string) (err error) {
+	f, err := os.Create(filename)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	err = gif.EncodeAll(f, &env.record)
+	return
 }
 
 func (env *Environment) relCell(x, y, rx, ry int) *EnvCell {
