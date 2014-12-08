@@ -183,6 +183,7 @@ func (env *Environment) drawFrame(iter int) {
 		normalColor,
 	})
 
+	// grid
 	for i := 1; i < EnvSize; i++ {
 		for j := 0; j < (CellPixel+1)*EnvSize-1; j++ {
 			img.Set((CellPixel+1)*i, j, gridColor)
@@ -192,9 +193,13 @@ func (env *Environment) drawFrame(iter int) {
 	for i := 0; i < EnvSize; i++ {
 		for j := 0; j < EnvSize; j++ {
 			cell := &env.Cell[i][j]
-
-			for ii := i*(CellPixel+1) + 1; ii < (i+1)*(CellPixel+1); ii++ {
-				for jj := j*(CellPixel+1) + 1; jj < (j+1)*(CellPixel+1); jj++ {
+			x1 := i*(CellPixel+1) + 1
+			x2 := (i + 1) * (CellPixel + 1)
+			y1 := j*(CellPixel+1) + 1
+			y2 := (j + 1) * (CellPixel + 1)
+			// food
+			for ii := x1; ii < x2; ii++ {
+				for jj := y1; jj < y2; jj++ {
 					img.Set(ii, jj, grassColor(cell.Food))
 				}
 			}
@@ -203,11 +208,11 @@ func (env *Environment) drawFrame(iter int) {
 				continue
 			}
 			a := cell.Animat
-
-			a1 := i*(CellPixel+1) + MarginPixel + 1
-			a2 := (i+1)*(CellPixel+1) - MarginPixel
-			b1 := j*(CellPixel+1) + MarginPixel + 1
-			b2 := (j+1)*(CellPixel+1) - MarginPixel
+			// body
+			a1 := x1 + MarginPixel
+			a2 := x2 - MarginPixel
+			b1 := y1 + MarginPixel
+			b2 := y2 - MarginPixel
 			for ii := a1; ii < a2; ii++ {
 				for jj := b1; jj < b2; jj++ {
 					if ii == a1 || ii == a2-1 ||
@@ -218,45 +223,26 @@ func (env *Environment) drawFrame(iter int) {
 					}
 				}
 			}
+			c1 := a1 + 1
+			c2 := a2 - 1
+			d1 := b1 + 1
+			d2 := b2 - 1
 			switch a.Direction {
 			case Up:
-				for ii := a1 + 1; ii < a2-1; ii++ {
-					for jj := b1 + 1; jj < b1+1+HeadPixel; jj++ {
-						if a.TargetColor == 0 {
-							img.Set(ii, jj, normalColor)
-						} else {
-							img.Set(ii, jj, attackColor)
-						}
-					}
-				}
+				d2 = b1 + 1 + HeadPixel
 			case Left:
-				for ii := a1 + 1; ii < a1+1+HeadPixel; ii++ {
-					for jj := b1 + 1; jj < b2-1; jj++ {
-						if a.TargetColor == 0 {
-							img.Set(ii, jj, normalColor)
-						} else {
-							img.Set(ii, jj, attackColor)
-						}
-					}
-				}
+				c2 = a1 + 1 + HeadPixel
 			case Down:
-				for ii := a1 + 1; ii < a2-1; ii++ {
-					for jj := b2 - 2; jj > b2-2-HeadPixel; jj-- {
-						if a.TargetColor == 0 {
-							img.Set(ii, jj, normalColor)
-						} else {
-							img.Set(ii, jj, attackColor)
-						}
-					}
-				}
+				d1 = b2 - 1 - HeadPixel
 			case Right:
-				for ii := a2 - 2; ii > a2-2-HeadPixel; ii-- {
-					for jj := b1 + 1; jj < b2-1; jj++ {
-						if a.TargetColor == 0 {
-							img.Set(ii, jj, normalColor)
-						} else {
-							img.Set(ii, jj, attackColor)
-						}
+				c1 = a2 - 1 - HeadPixel
+			}
+			for ii := c1; ii < c2; ii++ {
+				for jj := d1; jj < d2; jj++ {
+					if a.TargetColor == 0 {
+						img.Set(ii, jj, normalColor)
+					} else {
+						img.Set(ii, jj, attackColor)
 					}
 				}
 			}
