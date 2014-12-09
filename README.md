@@ -34,8 +34,10 @@ In pratical guide to training restricted boltzmann machine, rbm training uses "m
 
 As a side note, setting good example size to a certain value in the previous experiment does not hurt learning. because we can see this as our "mini-batch". 
 
+
 *Not using mini-batch*
 ![no-batch](http://giant.gfycat.com/TidyScarceEmu.gif)
+
 
 ## How to approximate input output with rbm
 
