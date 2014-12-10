@@ -11,7 +11,7 @@ rbm is a form of "example-based" learning. WIth a complete dataset, rbm can lear
 
 In this experiment, animat has access to a oracle that tells whether animat's output to a given input is good or bad. The rbm is pretrained to give "common sense" of what it should do. The number of pretrain example is 1000, while the number of possible inputs are exponential (2^25). Therefore, the pretrain examples only give a very rough energy curve for rbm.
 
-The experiment has 1000 iterations, and in each iteration, 8 animats with different skin colors *daydream* and produce the outputs.
+The experiment has 1000 iterations, and in each iteration, 8 animats with different colors *daydream* and produce the outputs.
 For each animat, its output is fed into the oracle. If the output is good, the output is added to a set for later training/learning. Due to memory size limitation and more realistic approximation to nature, the set has a fixed size. The expected behavior is defined by the oracle: food finding while attacking on hostile enemy on high food grid.
 
 The result shows that sufficient examples are needed for pretraining. In this experiment, the minimum pretrain example for input space of 2^25 is around 400. After pretraining, animat can refine its energy curve with the online examples selected by the oracle. It is noteworthy that pretraining+online learning is far more efficient than pretraining alone. This is because pretraining inputs are randomly generated, and its distribution is distinguishable from the distribution the animat actually preceives. As a result, someof the examples have very little probability to be useful; online learning on the other hand generates very "valuable" examples.
@@ -21,10 +21,10 @@ Pure online learning is surprisingly very inefficient. This might result from th
 *Pretain+online learning of food finding and fight over resource*
 ![base](http://giant.gfycat.com/HeavyMellowGuineafowl.gif)
 
-*Added animat relation and skin color preference*
+*Added animat relation and color preference*
 ```
-There are 3 skin colors: white, gray and black.
-Each animat has opinion on skin color; if the other has different skin color and the impression on that skin color is bad, there is a higher chance of attacking.
+There are 3 colors: white, gray and black.
+Each animat has opinion on color; if the other has different color and the impression on that color is bad, there is a higher chance of attacking.
 ```
 ![extend](http://giant.gfycat.com/NeedyQuerulousAmericancrayfish.gif)
 

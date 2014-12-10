@@ -113,7 +113,7 @@ func grassColor(grass uint8) color.Color {
 	}
 }
 
-func skinColor(c Color) color.Color {
+func animatColor(c Color) color.Color {
 	switch c {
 	case 1:
 		return bgColor1
@@ -219,7 +219,7 @@ func (env *Environment) drawFrame(iter int) {
 						jj == b1 || jj == b2-1 {
 						img.Set(ii, jj, gridColor)
 					} else {
-						img.Set(ii, jj, skinColor(a.Color))
+						img.Set(ii, jj, animatColor(a.Color))
 					}
 				}
 			}
