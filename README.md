@@ -14,19 +14,23 @@ In this experiment, animat has access to a oracle that tells whether animat's ou
 The experiment has 1000 iterations, and in each iteration, 8 animats with different colors *daydream* and produce the outputs.
 For each animat, its output is fed into the oracle. If the output is good, the output is added to a set for later training/learning. Due to memory size limitation and more realistic approximation to nature, the set has a fixed size. The expected behavior is defined by the oracle: food finding while attacking on hostile enemy on high food grid.
 
-The result shows that sufficient examples are needed for pretraining. In this experiment, the minimum pretrain example for input space of 2^25 is around 400. After pretraining, animat can refine its energy curve with the online examples selected by the oracle. It is noteworthy that pretraining+online learning is far more efficient than pretraining alone. This is because pretraining inputs are randomly generated, and its distribution is distinguishable from the distribution the animat actually preceives. As a result, someof the examples have very little probability to be useful; online learning on the other hand generates very "valuable" examples.
+The result shows that sufficient examples are needed for pretraining. In this experiment, the minimum pretrain example for input space of 2^25 is around 400. After pretraining, animat can refine its energy curve with the online examples selected by the oracle. It is noteworthy that pretraining+online learning is far more efficient than pretraining alone. This is because pretraining inputs are randomly generated, and its distribution is distinguishable from the distribution the animat actually preceives. As a result, some of the examples have very little probability to be useful; online learning on the other hand generates very "valuable" examples.
 
 Pure online learning is surprisingly very inefficient. This might result from that on the energy curve where there is no example, the output is very random. As the number of output increases, it is very hard to obrain a good/desired output oracle; theoratically, expected learning iteration of this online learning algorithm exponentially increases as output increases linearly. One possible solution is to define a quality score which extends oracle's binary decision to a continous space, and that work is not done in this phase.
 
 *Pretain+online learning of food finding and fight over resource*
+
 ![base](http://giant.gfycat.com/HeavyMellowGuineafowl.gif)
 
 *Added animat relation and color preference*
-```
+
 There are 3 colors: white, gray and black.
 Each animat has opinion on color; if the other has different color and the impression on that color is bad, there is a higher chance of attacking. The behavior results from reinforcement, while probability results from the fact that rbm is energy-based. The expected output after training should have lower energy and therefore is more likely to happen.
-```
+
 ![extend](http://giant.gfycat.com/NeedyQuerulousAmericancrayfish.gif)
+
+This color preference experiment demonstrates the effectiveness of online rbm-based learning on large input space by giving only limited examples. In this experiment, the color preference are not yet learnt. While the concept of food finding takes roughly 4 bits to fully express, the concept of color preference takes 20 bits. As a result, it will need much more examples.
+
 
 ## Whether mini-batch in rbm helps animat learning
 
@@ -36,8 +40,8 @@ As a side note, setting good example size to a certain value in the previous exp
 
 
 *Not using mini-batch (train with entire dataset)*
-![nobatch](http://giant.gfycat.com/TidyScarceEmu.gif)
 
+![nobatch](http://giant.gfycat.com/TidyScarceEmu.gif)
 
 ## How to approximate input output with rbm
 
@@ -50,10 +54,12 @@ While rbm is able to learn by patterns, it is often unclear to beginners how it 
 Note that weight calculation and reconstruction can use cd-k where k>=1. But k=10 is commonly used as a more precise approximation of gibbs sampling than k=1.
 
 *Before using input clamping reconstruction*
+
 ![before](http://giant.gfycat.com/VainWastefulAmericanwigeon.gif)
 
 
 *After using input clamping in reconstruction*
+
 ![after](http://giant.gfycat.com/ContentOptimisticAardwolf.gif)
 
 # References
