@@ -24,7 +24,7 @@ Pure online learning is surprisingly very inefficient. This might result from th
 *Added animat relation and color preference*
 ```
 There are 3 colors: white, gray and black.
-Each animat has opinion on color; if the other has different color and the impression on that color is bad, there is a higher chance of attacking.
+Each animat has opinion on color; if the other has different color and the impression on that color is bad, there is a higher chance of attacking. The behavior results from reinforcement, while probability results from the fact that rbm is energy-based. The expected output after training should have lower energy and therefore is more likely to happen.
 ```
 ![extend](http://giant.gfycat.com/NeedyQuerulousAmericancrayfish.gif)
 
